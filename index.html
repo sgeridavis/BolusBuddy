@@ -752,6 +752,20 @@
         let selectedItems = new Set();
         let cameraStream = null;
         
+        // Color coding based on fat ratio
+        function getFatRatioColor(carbs, fat) {
+            const ratio = fat / carbs;
+            if (ratio < 0.3) {
+                return '#5f9767'; // Green - standard bolus
+            } else if (ratio < 0.5) {
+                return '#e8a647'; // Yellow/orange - dual wave 70/30
+            } else if (ratio < 0.8) {
+                return '#e87d47'; // Orange - dual wave 50/50
+            } else {
+                return '#d95d47'; // Red/orange - dual wave 40/60
+            }
+        }
+        
         function loadData() {
             const saved = localStorage.getItem('carbData');
             if (saved) {
@@ -809,13 +823,9 @@
                                     </div>
                                 </div>
                                 <div class="item-nutrition">
-                                    <div class="nutrition-badge carbs-badge">
+                                    <div class="nutrition-badge carbs-badge" style="background: ${getFatRatioColor(item.carbs, item.fat)}">
                                         ${item.carbs}
                                         <span class="nutrition-label">carbs</span>
-                                    </div>
-                                    <div class="nutrition-badge fat-badge">
-                                        ${item.fat}
-                                        <span class="nutrition-label">fat</span>
                                     </div>
                                 </div>
                                 <div class="item-actions">
@@ -883,6 +893,8 @@
             document.getElementById('totalCarbs').textContent = totalCarbs.toFixed(1) + 'g';
             document.getElementById('totalFat').textContent = totalFat.toFixed(1) + 'g';
             
+            const mealTotal = document.getElementById('mealTotal');
+            
             // Calculate dual wave recommendations
             const bolusInfo = document.getElementById('bolusInfo');
             if (totalCarbs > 0) {
@@ -894,33 +906,41 @@
                 let recommendation = '';
                 let split = '';
                 let duration = '';
+                let panelColor = '';
                 
                 if (fatToCarb < 0.3) {
                     recommendation = '✓ Standard Bolus';
                     split = '100% upfront';
                     duration = '';
+                    panelColor = '#5f9767'; // Green
                 } else if (fatToCarb < 0.5) {
                     recommendation = '⚡ Dual Wave 70/30';
                     split = '70% now / 30% extended';
                     duration = '2-3 hours';
+                    panelColor = '#e8a647'; // Yellow/orange
                 } else if (fatToCarb < 0.8) {
                     recommendation = '⚡ Dual Wave 50/50';
                     split = '50% now / 50% extended';
                     duration = '3-4 hours';
+                    panelColor = '#e87d47'; // Orange
                 } else {
                     recommendation = '⚡ Dual Wave 40/60';
                     split = '40% now / 60% extended';
                     duration = '4-6 hours';
+                    panelColor = '#d95d47'; // Red/orange
                 }
+                
+                // Change panel background color
+                mealTotal.style.background = panelColor;
                 
                 document.getElementById('bolusRecommendation').innerHTML = 
                     `${recommendation}<br><small style="font-weight: normal; font-size: 12px;">${split}${duration ? ' • ' + duration : ''}</small>`;
                 bolusInfo.style.display = 'block';
             } else {
                 bolusInfo.style.display = 'none';
+                mealTotal.style.background = ''; // Reset to default
             }
             
-            const mealTotal = document.getElementById('mealTotal');
             if (selectedItems.size > 0) {
                 mealTotal.classList.add('show');
             } else {
@@ -1120,56 +1140,117 @@
         function parseNutritionLabel(text) {
             const result = { carbs: null, fat: null };
             
-            // Normalize text
-            const normalized = text.toLowerCase()
+            console.log('Raw OCR text:', text);
+            
+            // Normalize text - handle common OCR errors
+            const normalized = text
+                .toLowerCase()
                 .replace(/\s+/g, ' ')
-                .replace(/[,]/g, '.');
+                .replace(/[,]/g, '.')
+                .replace(/o/gi, '0')  // OCR often confuses O with 0
+                .replace(/l/g, '1')   // OCR often confuses l with 1
+                .replace(/['''`]/g, '') // Remove quotes
+                .trim();
             
-            // Look for carbohydrate values (per 100g or per serving)
-            // Common patterns:
-            // "carbohydrate 23.5g"
-            // "carbs 23.5"
-            // "carbohydrate: 23.5"
-            // "total carbohydrate 23.5g per 100g"
-            const carbPatterns = [
-                /carbohydrate[s]?\s*:?\s*(\d+\.?\d*)\s*g/i,
-                /carb[s]?\s*:?\s*(\d+\.?\d*)\s*g/i,
-                /total carb[s]?\s*:?\s*(\d+\.?\d*)/i,
-                /carbohydrate[s]?\s+(\d+\.?\d*)/i
-            ];
+            console.log('Normalized text:', normalized);
             
-            for (const pattern of carbPatterns) {
-                const match = normalized.match(pattern);
-                if (match) {
-                    result.carbs = parseFloat(match[1]);
+            // Split into lines for better parsing
+            const lines = normalized.split(/[\n\r]+/);
+            
+            // Look for "per 100g" section
+            let per100gSection = '';
+            for (let i = 0; i < lines.length; i++) {
+                if (lines[i].includes('per 100') || lines[i].includes('per100') || 
+                    lines[i].includes('/100') || lines[i].includes('100g') || 
+                    lines[i].includes('100 g')) {
+                    // Get surrounding lines
+                    per100gSection = lines.slice(Math.max(0, i-3), i+10).join(' ');
                     break;
                 }
             }
             
-            // Look for fat values
-            // Common patterns:
-            // "fat 12.5g"
-            // "total fat: 12.5"
-            // "fat: 12.5g per 100g"
-            const fatPatterns = [
-                /total\s+fat\s*:?\s*(\d+\.?\d*)\s*g/i,
-                /fat\s*:?\s*(\d+\.?\d*)\s*g/i,
-                /fat\s+(\d+\.?\d*)/i,
-                /\bfat\b\s*:?\s*(\d+\.?\d*)/i
+            const searchText = per100gSection || normalized;
+            console.log('Search text:', searchText);
+            
+            // Enhanced carbohydrate patterns - look for numbers after carb-related words
+            const carbPatterns = [
+                /carbohydrate[s]?[:\s]+(\d+\.?\d*)/i,
+                /total carb[s]?[:\s]+(\d+\.?\d*)/i,
+                /carb[s]?[:\s]+(\d+\.?\d*)/i,
+                /carbohydrate.*?(\d+\.?\d*)\s*g/i,
+                /carb.*?(\d+\.?\d*)\s*g/i,
+                /\bcarbs?\b.*?(\d+\.?\d*)/i,
+                /(?:total\s+)?carbohydrate.*?(\d{1,2}\.?\d*)/i
             ];
             
-            for (const pattern of fatPatterns) {
-                const match = normalized.match(pattern);
+            for (const pattern of carbPatterns) {
+                const match = searchText.match(pattern);
                 if (match) {
-                    // Make sure we didn't accidentally catch "saturated fat"
-                    const beforeMatch = normalized.substring(0, match.index);
-                    if (!beforeMatch.endsWith('saturated ') && !beforeMatch.endsWith('sat ')) {
-                        result.fat = parseFloat(match[1]);
+                    const value = parseFloat(match[1]);
+                    // Sanity check - carbs per 100g usually between 0-100
+                    if (value >= 0 && value <= 100) {
+                        result.carbs = value;
+                        console.log('Found carbs:', value);
                         break;
                     }
                 }
             }
             
+            // Enhanced fat patterns
+            const fatPatterns = [
+                /(?:total\s+)?fat[:\s]+(\d+\.?\d*)/i,
+                /\bfat\b[:\s]+(\d+\.?\d*)/i,
+                /fat.*?(\d+\.?\d*)\s*g/i,
+                /(?<!saturated\s)(?<!sat\s)fat.*?(\d{1,2}\.?\d*)/i,
+                /total\s+fat.*?(\d{1,2}\.?\d*)/i
+            ];
+            
+            for (const pattern of fatPatterns) {
+                const match = searchText.match(pattern);
+                if (match) {
+                    const value = parseFloat(match[1]);
+                    // Sanity check - fat per 100g usually between 0-100
+                    // Make sure it's not "saturated fat"
+                    const beforeMatch = searchText.substring(0, match.index);
+                    if (value >= 0 && value <= 100 && 
+                        !beforeMatch.endsWith('saturated ') && 
+                        !beforeMatch.endsWith('sat ')) {
+                        result.fat = value;
+                        console.log('Found fat:', value);
+                        break;
+                    }
+                }
+            }
+            
+            // If we didn't find values, try a more aggressive number search
+            if (!result.carbs || !result.fat) {
+                // Look for lines that contain nutrition-related words and numbers
+                for (const line of lines) {
+                    if (!result.carbs && /carb/i.test(line)) {
+                        const numbers = line.match(/\d+\.?\d*/g);
+                        if (numbers && numbers.length > 0) {
+                            const value = parseFloat(numbers[0]);
+                            if (value >= 0 && value <= 100) {
+                                result.carbs = value;
+                                console.log('Found carbs (aggressive):', value);
+                            }
+                        }
+                    }
+                    
+                    if (!result.fat && /\bfat\b/i.test(line) && !/saturated/i.test(line)) {
+                        const numbers = line.match(/\d+\.?\d*/g);
+                        if (numbers && numbers.length > 0) {
+                            const value = parseFloat(numbers[0]);
+                            if (value >= 0 && value <= 100) {
+                                result.fat = value;
+                                console.log('Found fat (aggressive):', value);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            console.log('Final result:', result);
             return result;
         }
 
