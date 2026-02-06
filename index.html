@@ -1,16 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <script src=""></script>
-    <link rel="manifest" href="manifest.json">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>BolusBuddy Pro</title>
-    
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>BolusBuddy Pro</title>
+<link rel="manifest" href="manifest.json">
+<script src=""></script>
+<script src=""></script>
+</head>
     
     <style>
         :root {
@@ -234,20 +232,24 @@
 
         function closeScanner() { if(camStream) camStream.getTracks().forEach(t => t.stop()); document.getElementById('camera-view').style.display = 'none'; }
         async function capture() {
-            const v = document.getElementById('video'); const c = document.getElementById('canvas');
-            c.width = v.videoWidth; c.height = v.videoHeight; c.getContext('2d').drawImage(v, 0, 0);
-            closeScanner(); document.getElementById('scan-loader').style.display = "flex";
-            const r = await Tesseract.recognize(c, 'eng');
-            const t = r.data.text.toLowerCase();
-            const cm = t.match(/(?:carb|carbohydrate)[\s\w]*?(\d+\.?\d*)/);
-            const fm = t.match(/(?:fat|total fat)[\s\w]*?(\d+\.?\d*)/);
-            if(cm) document.getElementById('new-carbs').value = cm[1];
-            if(fm) document.getElementById('new-fat').value = fm[1];
-            document.getElementById('scan-loader').style.display = "none";
-            setTab('manual');
+            et camStream;
+
+        function closeScanner() {
+        if(camStream) camStream.getTracks().forEach(t => t.stop());
+        document.getElementById('camera-view').style.display = 'none';
         }
 
-        renderFoods();
-    </script>
+        async function capture() {
+        const v = document.getElementById('video');
+        const c = document.getElementById('canvas');
+        c.width = v.videoWidth;
+        c.height = v.videoHeight;
+        c.getContext('2d').drawImage(v, 0, 0);
+
+}
+
+renderFoods();
+</script>
+
 </body>
 </html>
