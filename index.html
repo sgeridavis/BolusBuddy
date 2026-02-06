@@ -217,9 +217,9 @@
         // CAMERA LOGIC WITH DEBUGGING
         let camStream = null;
         async function openScanner() {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                alert("Browser Security Block: Camera access is only allowed on 'Secure' pages (HTTPS). If you opened this file directly from your phone's storage, the browser will block it. Please try uploading it to a private web link.");
-                return;
+            const v = document.getElementById('video');
+            const c = document.getElementById('canvas');
+            const loader = document.getElementById('scan-loader');
             }
 
             document.getElementById('camera-view').style.display = 'flex';
