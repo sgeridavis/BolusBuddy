@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>BolusBuddy Pro</title>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    
+    <style>
+        :root {
+            --bg: #0f172a; --card: #1e293b; --primary: #38bdf8;
+            --accent: #818cf8; --fat: #fb923c; --text: #f8fafc;
+            --text-dim: #94a3b8; --border: #334155; --danger: #ef4444;
+            --panel-bg: #1e293b;
+        }
+
+        [data-theme="light"] {
+            --bg: #f1f5f9; --card: #ffffff; --primary: #0284c7;
+            --accent: #4f46e5; --fat: #ea580c; --text: #0f172a;
+            --text-dim: #64748b; --border: #cbd5e1; --danger: #dc2626;
+            --panel-bg: #ffffff;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); padding-bottom: 300px; transition: background 0.3s ease; }
+
+        .app-header { background: var(--card); padding: 1rem; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 6px; }
+        .theme-toggle { background: none; border: none; color: var(--text); padding: 5px; cursor: pointer; }
+
+        .search-area { padding: 1rem; position: sticky; top: 60px; background: var(--bg); z-index: 90; }
+        .search-bar { background: var(--card); border: 1px solid var(--border); border-radius: 12px; display: flex; align-items: center; padding: 0 12px; }
+        .search-bar input { background: transparent; border: none; color: var(--text); padding: 12px; width: 100%; outline: none; font-size: 16px; }
+
+        .category-label { font-size: 0.75rem; text-transform: uppercase; color: var(--text-dim); margin: 20px 15px 8px; letter-spacing: 1px; font-weight: bold; }
+        .food-card { background: var(--card); border-radius: 16px; padding: 16px; margin: 0 15px 10px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .food-card.selected { border-color: var(--primary); border-width: 2px; }
+        
+        .food-stats { display: flex; gap: 8px; margin-top: 5px; }
+        .stat { padding: 4px 8px; border-radius: 6px; font-weight: 700; font-size: 0.85rem; text-align: center; min-width: 45px; }
+        .stat.c { background: rgba(56, 189, 248, 0.15); color: var(--primary); }
+        .stat.f { background: rgba(251, 146, 60, 0.15); color: var(--fat); }
+        .stat span { display: block; font-size: 0.55rem; font-weight: 400; opacity: 0.8; }
+
+        .summary-panel { position: fixed; bottom: 20px; left: 15px; right: 15px; background: var(--panel-bg); color: var(--text); border-radius: 24px; padding: 1.2rem; display: none; z-index: 1000; box-shadow: 0 10px 40px rgba(0,0,0,0.2); border: 4px solid var(--primary); transition: border-color 0.3s ease; }
+        .summary-panel.active { display: block; }
+        .summary-panel.extended-mode { border-color: var(--fat); }
+
+        .bolus-text-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+        .rec-label { font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold; }
+        .rec-value { font-size: 1.1rem; font-weight: 800; color: var(--primary); }
+        .summary-panel.extended-mode .rec-value { color: var(--fat); }
+
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 2000; padding: 15px; }
+        .modal.active { display: flex; }
+        .modal-content { background: var(--card); width: 100%; max-width: 450px; border-radius: 24px; border: 1px solid var(--border); padding: 20px; max-height: 90vh; overflow-y: auto; color: var(--text); }
+        .tab-group { display: flex; gap: 5px; background: var(--bg); padding: 5px; border-radius: 12px; margin-bottom: 20px; }
+        .tab { flex: 1; padding: 8px; border: none; border-radius: 8px; background: transparent; color: var(--text); font-size: 0.8rem; font-weight: 600; }
+        .tab.active { background: var(--card); border: 1px solid var(--border); }
+
+        input, select { width: 100%; padding: 12px; margin: 8px 0 15px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 16px; }
+        .fab { position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; border-radius: 30px; background: var(--accent); color: white; border: none; z-index: 99; display: flex; align-items: center; justify-content: center; }
+
+        #camera-view { position: fixed; inset: 0; background: #000; z-index: 3000; display: none; flex-direction: column; }
+        #video { width: 100%; height: 75%; object-fit: cover; background: #222; }
+        .cam-controls { flex: 1; display: flex; justify-content: space-around; align-items: center; padding: 20px; background: #000; }
+        #scan-loader { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 4000; display: none; flex-direction: column; align-items: center; justify-content: center; color: white; }
+    </style>
+</head>
+<body data-theme="dark">
+
+    <header class="app-header">
+        <div class="logo"><i data-lucide="zap"></i> BolusBuddy Pro</div>
+        <div style="display:flex; align-items:center; gap:15px;">
+            <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn"><i data-lucide="sun"></i></button>
+            <div id="sel-count" style="font-size: 0.8rem; opacity: 0.7;">0 Selected</div>
+        </div>
+    </header>
+
+    <div class="search-area">
+        <div class="search-bar"><i data-lucide="search" size="18"></i><input type="text" id="search-input" placeholder="Search foods..." oninput="renderFoods()"></div>
+    </div>
+
+    <div id="food-list"></div>
+
+    <button class="fab" onclick="openAddModal()"><i data-lucide="plus"></i></button>
+
+    <div class="summary-panel" id="summary-panel">
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+            <div><label style="font-size:0.7rem; font-weight:bold; text-transform:uppercase; color:var(--text-dim)">Total Carbs</label><div id="total-c" style="font-size:1.8rem; font-weight:800;">0g</div></div>
+            <div style="text-align:right;"><label style="font-size:0.7rem; font-weight:bold; text-transform:uppercase; color:var(--text-dim)">Total Fat</label><div id="total-f" style="font-size:1.8rem; font-weight:800;">0g</div></div>
+        </div>
+        <div class="bolus-text-row">
+            <span class="rec-label">Pump Setting:</span>
+            <span class="rec-value" id="bolus-type-text">Standard</span>
+        </div>
+        <div class="bolus-text-row" style="margin-top: 5px;">
+            <span class="rec-label">Split / Duration:</span>
+            <span id="split-detail" style="font-weight: bold;">100% Now</span>
+        </div>
+        <button onclick="clearSelection()" style="width:100%; margin-top:15px; background:var(--bg); border:1px solid var(--border); padding: 12px; border-radius: 12px; color:var(--text); font-weight:bold;">Clear Selection</button>
+    </div>
+
+    <div class="modal" id="add-modal">
+        <div class="modal-content">
+            <h3 id="modal-title" style="margin-bottom: 15px;">Add Food</h3>
+            <div class="tab-group" id="modal-tabs">
+                <button class="tab active" id="tab-manual" onclick="setTab('manual')">Manual</button>
+                <button class="tab" id="tab-calc" onclick="setTab('calc')">100g Calc</button>
+                <button class="tab" id="tab-scan" onclick="openScanner()"><i data-lucide="camera" size="14"></i> Scan</button>
+            </div>
+            <input type="hidden" id="edit-id">
+            <div id="calc-fields" style="display:none; background:rgba(0,0,0,0.05); padding:15px; border-radius:12px; margin-bottom:15px;">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
+                    <div><label style="font-size:0.7rem">Carbs/100g</label><input type="number" id="c100" oninput="runCalc()"></div>
+                    <div><label style="font-size:0.7rem">Fat/100g</label><input type="number" id="f100" oninput="runCalc()"></div>
+                </div>
+                <input type="number" id="portion" oninput="runCalc()" placeholder="Weight in Grams (g)">
+            </div>
+            <label>Name</label><input type="text" id="new-name" placeholder="e.g. Pizza Slice">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
+                <div><label>Carbs (g)</label><input type="number" id="new-carbs"></div>
+                <div><label>Fat (g)</label><input type="number" id="new-fat"></div>
+            </div>
+            <label>Measure</label><input type="text" id="new-measure">
+            <label>Category</label>
+            <select id="new-cat">
+                <option>Cereal/Breakfasts</option><option>Biscuits/Cakes</option><option>Dinners</option><option>Snacks</option><option>Desserts</option><option>Veges/Rice</option><option>Crackers</option><option>Lollies/Misc</option>
+            </select>
+            <div style="display:flex; gap:10px">
+                <button onclick="closeModal()" style="flex:1; padding:12px; border:none; border-radius:12px; background:var(--border); color:var(--text);">Cancel</button>
+                <button onclick="saveFood()" style="flex:1; padding:12px; border:none; border-radius:12px; background:var(--primary); color:white; font-weight:800;">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="camera-view">
+        <video id="video" autoplay playsinline muted></video>
+        <div class="cam-controls">
+            <button onclick="closeScanner()" style="color:white; border:none; background:none;">Cancel</button>
+            <button onclick="capture()" style="width:70px; height:70px; border-radius:50%; border:5px solid white; background:red;"></button>
+            <div style="width:60px"></div>
+        </div>
+    </div>
+    <div id="scan-loader"><div>Scanning Label...</div></div>
+    <canvas id="canvas" style="display:none;"></canvas>
+
+    <script>
+        // Database
+        const initialData = [
+            { id: 101, name: "Apricot Nuts & Seeds Muesli", cat: "Cereal/Breakfasts", carbs: 21, fat: 6, measure: "1/2C" },
+            { id: 102, name: "Harraways Scotch Oats", cat: "Cereal/Breakfasts", carbs: 34, fat: 4, measure: "1/2C" },
+            { id: 106, name: "Milk", cat: "Cereal/Breakfasts", carbs: 4.7, fat: 3.5, measure: "100ml" },
+            { id: 110, name: "Buttermilk Chicken", cat: "Dinners", carbs: 34, fat: 12, measure: "1 piece" }
+        ];
+
+        let foods = JSON.parse(localStorage.getItem('bb_v8')) || initialData;
+        let selected = new Set();
+        lucide.createIcons();
+
+        function toggleTheme() {
+            const current = document.body.getAttribute('data-theme');
+            setTheme(current === 'dark' ? 'light' : 'dark');
+        }
+        function setTheme(theme) {
+            document.body.setAttribute('data-theme', theme);
+            localStorage.setItem('bb_theme', theme);
+            const btn = document.getElementById('theme-btn');
+            btn.innerHTML = theme === 'dark' ? '<i data-lucide="sun"></i>' : '<i data-lucide="moon"></i>';
+            lucide.createIcons();
+        }
+        setTheme(localStorage.getItem('bb_theme') || 'dark');
+
+        function renderFoods() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const list = document.getElementById('food-list');
+            list.innerHTML = "";
+            const filtered = foods.filter(f => f.name.toLowerCase().includes(query));
+            const cats = [...new Set(filtered.map(f => f.cat))].sort();
+            cats.forEach(cat => {
+                list.innerHTML += `<div class="category-label">${cat}</div>`;
+                filtered.filter(f => f.cat === cat).sort((a,b) => a.name.localeCompare(b.name)).forEach(f => {
+                    const isSel = selected.has(f.id) ? 'selected' : '';
+                    list.innerHTML += `<div class="food-card ${isSel}" onclick="toggleFood(${f.id})"><div class="food-info"><div><strong>${f.name}</strong> <small style="opacity:0.6">${f.measure}</small></div><div class="food-stats"><div class="stat c">${f.carbs}<span>Carbs</span></div><div class="stat f">${f.fat}<span>Fat</span></div></div></div><div class="card-actions"><button class="action-btn" onclick="event.stopPropagation(); editFood(${f.id})"><i data-lucide="edit-2" size="18"></i></button></div></div>`;
+                });
+            });
+            lucide.createIcons();
+        }
+
+        function toggleFood(id) { if (selected.has(id)) selected.delete(id); else selected.add(id); updateBolus(); renderFoods(); }
+        function updateBolus() {
+            let tc = 0, tf = 0;
+            selected.forEach(id => { const f = foods.find(x => x.id === id); if(f) { tc += f.carbs; tf += f.fat; } });
+            document.getElementById('total-c').innerText = tc.toFixed(1) + "g";
+            document.getElementById('total-f').innerText = tf.toFixed(1) + "g";
+            document.getElementById('summary-panel').classList.toggle('active', selected.size > 0);
+            const ratio = tf / (tc || 1);
+            const p = document.getElementById('summary-panel');
+            if (tf < 15 || ratio < 0.35) { p.classList.remove('extended-mode'); document.getElementById('bolus-type-text').innerText = "Standard"; document.getElementById('split-detail').innerText = "100% Upfront"; }
+            else { p.classList.add('extended-mode'); document.getElementById('bolus-type-text').innerText = ratio < 0.6 ? "Extended (Mod)" : "Extended (High)"; document.getElementById('split-detail').innerText = ratio < 0.6 ? "70% / 30%" : "50% / 50%"; }
+        }
+
+        function clearSelection() { selected.clear(); updateBolus(); renderFoods(); }
+        function openAddModal() { closeModal(); document.getElementById('add-modal').classList.add('active'); }
+        function editFood(id) { const f = foods.find(x => x.id === id); document.getElementById('modal-title').innerText = "Edit Food"; document.getElementById('edit-id').value = f.id; document.getElementById('new-name').value = f.name; document.getElementById('new-carbs').value = f.carbs; document.getElementById('new-fat').value = f.fat; document.getElementById('new-measure').value = f.measure; document.getElementById('new-cat').value = f.cat; document.getElementById('add-modal').classList.add('active'); }
+        function closeModal() { document.getElementById('add-modal').classList.remove('active'); document.getElementById('edit-id').value = ""; }
+        function setTab(type) { document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); document.getElementById('tab-' + type).classList.add('active'); document.getElementById('calc-fields').style.display = (type === 'calc') ? 'block' : 'none'; }
+        function runCalc() { const c = parseFloat(document.getElementById('c100').value) || 0; const f = parseFloat(document.getElementById('f100').value) || 0; const w = parseFloat(document.getElementById('portion').value) || 0; document.getElementById('new-carbs').value = ((c * w) / 100).toFixed(1); document.getElementById('new-fat').value = ((f * w) / 100).toFixed(1); }
+        function saveFood() { const id = document.getElementById('edit-id').value; const f = { id: id ? parseInt(id) : Date.now(), name: document.getElementById('new-name').value, carbs: parseFloat(document.getElementById('new-carbs').value) || 0, fat: parseFloat(document.getElementById('new-fat').value) || 0, measure: document.getElementById('new-measure').value || '1 serv', cat: document.getElementById('new-cat').value }; if(!f.name) return; if(id) foods[foods.findIndex(x => x.id === parseInt(id))] = f; else foods.push(f); localStorage.setItem('bb_v8', JSON.stringify(foods)); renderFoods(); closeModal(); }
+
+        // CAMERA LOGIC WITH DEBUGGING
+        let camStream = null;
+        async function openScanner() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert("Browser Security Block: Camera access is only allowed on 'Secure' pages (HTTPS). If you opened this file directly from your phone's storage, the browser will block it. Please try uploading it to a private web link.");
+                return;
+            }
+
+            document.getElementById('camera-view').style.display = 'flex';
+            try {
+                camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                document.getElementById('video').srcObject = camStream;
+            } catch (err) {
+                alert("Permission Error: Please check your phone settings. Go to Settings > Safari/Chrome > Camera and set it to 'Allow'.");
+                closeScanner();
+            }
+        }
+
+        function closeScanner() { if(camStream) camStream.getTracks().forEach(t => t.stop()); document.getElementById('camera-view').style.display = 'none'; }
+        async function capture() {
+            const v = document.getElementById('video'); const c = document.getElementById('canvas');
+            c.width = v.videoWidth; c.height = v.videoHeight; c.getContext('2d').drawImage(v, 0, 0);
+            closeScanner(); document.getElementById('scan-loader').style.display = "flex";
+            const r = await Tesseract.recognize(c, 'eng');
+            const t = r.data.text.toLowerCase();
+            const cm = t.match(/(?:carb|carbohydrate)[\s\w]*?(\d+\.?\d*)/);
+            const fm = t.match(/(?:fat|total fat)[\s\w]*?(\d+\.?\d*)/);
+            if(cm) document.getElementById('new-carbs').value = cm[1];
+            if(fm) document.getElementById('new-fat').value = fm[1];
+            document.getElementById('scan-loader').style.display = "none";
+            setTab('manual');
+        }
+
+        renderFoods();
+    </script>
+</body>
+</html>
