@@ -1,15 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<title>BolusBuddy Pro</title>
-<link rel="manifest" href="manifest.json">
-<script src=""></script>
-<script src=""></script>
-</head>
-    
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>BolusBuddy Pro</title>
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+
     <style>
         :root {
             --bg: #0f172a; --card: #1e293b; --primary: #38bdf8;
@@ -39,7 +37,7 @@
         .category-label { font-size: 0.75rem; text-transform: uppercase; color: var(--text-dim); margin: 20px 15px 8px; letter-spacing: 1px; font-weight: bold; }
         .food-card { background: var(--card); border-radius: 16px; padding: 16px; margin: 0 15px 10px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
         .food-card.selected { border-color: var(--primary); border-width: 2px; }
-        
+        .food-info { display:flex; flex-direction:column; gap:6px; }
         .food-stats { display: flex; gap: 8px; margin-top: 5px; }
         .stat { padding: 4px 8px; border-radius: 6px; font-weight: 700; font-size: 0.85rem; text-align: center; min-width: 45px; }
         .stat.c { background: rgba(56, 189, 248, 0.15); color: var(--primary); }
@@ -56,7 +54,7 @@
         .summary-panel.extended-mode .rec-value { color: var(--fat); }
 
         .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 2000; padding: 15px; }
-        .modal.active { display: flex; }
+        .modal.active { display:flex; }
         .modal-content { background: var(--card); width: 100%; max-width: 450px; border-radius: 24px; border: 1px solid var(--border); padding: 20px; max-height: 90vh; overflow-y: auto; color: var(--text); }
         .tab-group { display: flex; gap: 5px; background: var(--bg); padding: 5px; border-radius: 12px; margin-bottom: 20px; }
         .tab { flex: 1; padding: 8px; border: none; border-radius: 8px; background: transparent; color: var(--text); font-size: 0.8rem; font-weight: 600; }
@@ -69,6 +67,7 @@
         #video { width: 100%; height: 75%; object-fit: cover; background: #222; }
         .cam-controls { flex: 1; display: flex; justify-content: space-around; align-items: center; padding: 20px; background: #000; }
         #scan-loader { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 4000; display: none; flex-direction: column; align-items: center; justify-content: center; color: white; }
+        #scan-progress { margin-top: 12px; font-weight:700; }
     </style>
 </head>
 <body data-theme="dark">
@@ -100,7 +99,7 @@
         </div>
         <div class="bolus-text-row" style="margin-top: 5px;">
             <span class="rec-label">Split / Duration:</span>
-            <span id="split-detail" style="font-weight: bold;">100% Now</span>
+            <span id="split-detail" style="font-weight: bold;">100% Upfront</span>
         </div>
         <button onclick="clearSelection()" style="width:100%; margin-top:15px; background:var(--bg); border:1px solid var(--border); padding: 12px; border-radius: 12px; color:var(--text); font-weight:bold;">Clear Selection</button>
     </div>
@@ -142,11 +141,11 @@
         <video id="video" autoplay playsinline muted></video>
         <div class="cam-controls">
             <button onclick="closeScanner()" style="color:white; border:none; background:none;">Cancel</button>
-            <button onclick="capture()" style="width:70px; height:70px; border-radius:50%; border:5px solid white; background:red;"></button>
+            <button id="capture-btn" onclick="capture()" style="width:70px; height:70px; border-radius:50%; border:5px solid white; background:red;"></button>
             <div style="width:60px"></div>
         </div>
     </div>
-    <div id="scan-loader"><div>Scanning Label...</div></div>
+    <div id="scan-loader"><div>Scanning Label...<div id="scan-progress">0%</div></div></div>
     <canvas id="canvas" style="display:none;"></canvas>
 
     <script>
@@ -185,16 +184,19 @@
                 list.innerHTML += `<div class="category-label">${cat}</div>`;
                 filtered.filter(f => f.cat === cat).sort((a,b) => a.name.localeCompare(b.name)).forEach(f => {
                     const isSel = selected.has(f.id) ? 'selected' : '';
-                    list.innerHTML += `<div class="food-card ${isSel}" onclick="toggleFood(${f.id})"><div class="food-info"><div><strong>${f.name}</strong> <small style="opacity:0.6">${f.measure}</small></div><div class="food-stats"><div class="stat c">${f.carbs}<span>Carbs</span></div><div class="stat f">${f.fat}<span>Fat</span></div></div></div><div class="card-actions"><button class="action-btn" onclick="event.stopPropagation(); editFood(${f.id})"><i data-lucide="edit-2" size="18"></i></button></div></div>`;
+                    list.innerHTML += `<div class="food-card ${isSel}" onclick="toggleFood(${f.id})"><div class="food-info"><div><strong>${escapeHtml(f.name)}</strong> <small style="opacity:0.6">${escapeHtml(f.measure)}</small></div><div class="food-stats"><div class="stat c">${f.carbs}<span>Carbs</span></div><div class="stat f">${f.fat}<span>Fat</span></div></div></div><div class="card-actions"><button class="action-btn" onclick="event.stopPropagation(); editFood(${f.id})"><i data-lucide="edit-2" size="18"></i></button></div></div>`;
                 });
             });
             lucide.createIcons();
+            document.getElementById('sel-count').innerText = `${selected.size} Selected`;
         }
+
+        function escapeHtml(s) { return String(s).replace(/[&<>"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]); }); }
 
         function toggleFood(id) { if (selected.has(id)) selected.delete(id); else selected.add(id); updateBolus(); renderFoods(); }
         function updateBolus() {
             let tc = 0, tf = 0;
-            selected.forEach(id => { const f = foods.find(x => x.id === id); if(f) { tc += f.carbs; tf += f.fat; } });
+            selected.forEach(id => { const f = foods.find(x => x.id === id); if(f) { tc += Number(f.carbs) || 0; tf += Number(f.fat) || 0; } });
             document.getElementById('total-c').innerText = tc.toFixed(1) + "g";
             document.getElementById('total-f').innerText = tf.toFixed(1) + "g";
             document.getElementById('summary-panel').classList.toggle('active', selected.size > 0);
@@ -205,51 +207,198 @@
         }
 
         function clearSelection() { selected.clear(); updateBolus(); renderFoods(); }
-        function openAddModal() { closeModal(); document.getElementById('add-modal').classList.add('active'); }
-        function editFood(id) { const f = foods.find(x => x.id === id); document.getElementById('modal-title').innerText = "Edit Food"; document.getElementById('edit-id').value = f.id; document.getElementById('new-name').value = f.name; document.getElementById('new-carbs').value = f.carbs; document.getElementById('new-fat').value = f.fat; document.getElementById('new-measure').value = f.measure; document.getElementById('new-cat').value = f.cat; document.getElementById('add-modal').classList.add('active'); }
+        function openAddModal() { closeModal(); document.getElementById('add-modal').classList.add('active'); setTab('manual'); }
+        function editFood(id) { const f = foods.find(x => x.id === id); if(!f) return; document.getElementById('modal-title').innerText = "Edit Food"; document.getElementById('edit-id').value = f.id; document.getElementById('new-name').value = f.name; document.getElementById('new-carbs').value = f.carbs; document.getElementById('new-fat').value = f.fat; document.getElementById('new-measure').value = f.measure; document.getElementById('new-cat').value = f.cat; document.getElementById('add-modal').classList.add('active'); setTab('manual'); }
         function closeModal() { document.getElementById('add-modal').classList.remove('active'); document.getElementById('edit-id').value = ""; }
-        function setTab(type) { document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); document.getElementById('tab-' + type).classList.add('active'); document.getElementById('calc-fields').style.display = (type === 'calc') ? 'block' : 'none'; }
-        function runCalc() { const c = parseFloat(document.getElementById('c100').value) || 0; const f = parseFloat(document.getElementById('f100').value) || 0; const w = parseFloat(document.getElementById('portion').value) || 0; document.getElementById('new-carbs').value = ((c * w) / 100).toFixed(1); document.getElementById('new-fat').value = ((f * w) / 100).toFixed(1); }
-        function saveFood() { const id = document.getElementById('edit-id').value; const f = { id: id ? parseInt(id) : Date.now(), name: document.getElementById('new-name').value, carbs: parseFloat(document.getElementById('new-carbs').value) || 0, fat: parseFloat(document.getElementById('new-fat').value) || 0, measure: document.getElementById('new-measure').value || '1 serv', cat: document.getElementById('new-cat').value }; if(!f.name) return; if(id) foods[foods.findIndex(x => x.id === parseInt(id))] = f; else foods.push(f); localStorage.setItem('bb_v8', JSON.stringify(foods)); renderFoods(); closeModal(); }
 
-        // CAMERA LOGIC WITH DEBUGGING
-        let camStream = null;
-        async function openScanner() {
-            const v = document.getElementById('video');
-            const c = document.getElementById('canvas');
-            const loader = document.getElementById('scan-loader');
+        function setTab(type) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            const el = document.getElementById('tab-' + type);
+            if(el) el.classList.add('active');
+            document.getElementById('calc-fields').style.display = (type === 'calc') ? 'block' : 'none';
+        }
+
+        function runCalc() {
+            const c100 = parseFloat(document.getElementById('c100').value) || 0;
+            const f100 = parseFloat(document.getElementById('f100').value) || 0;
+            const w = parseFloat(document.getElementById('portion').value) || 0;
+            // Only calculate if portion weight provided
+            if (w > 0) {
+                document.getElementById('new-carbs').value = ((c100 * w) / 100).toFixed(1);
+                document.getElementById('new-fat').value = ((f100 * w) / 100).toFixed(1);
+            } else {
+                // If no portion weight, clear per-serving fields
+                document.getElementById('new-carbs').value = "";
+                document.getElementById('new-fat').value = "";
             }
+        }
 
+        function saveFood() {
+            const id = document.getElementById('edit-id').value;
+            const f = {
+                id: id ? parseInt(id) : Date.now(),
+                name: document.getElementById('new-name').value.trim(),
+                carbs: parseFloat(document.getElementById('new-carbs').value) || 0,
+                fat: parseFloat(document.getElementById('new-fat').value) || 0,
+                measure: document.getElementById('new-measure').value || '1 serv',
+                cat: document.getElementById('new-cat').value
+            };
+            if(!f.name) return;
+            if(id) foods[foods.findIndex(x => x.id === parseInt(id))] = f; else foods.push(f);
+            localStorage.setItem('bb_v8', JSON.stringify(foods));
+            renderFoods();
+            closeModal();
+        }
+
+        // CAMERA + OCR (reads Carbs/100g, Fat/100g, and Serving weight)
+        let camStream = null;
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const loader = document.getElementById('scan-loader');
+        const progressEl = document.getElementById('scan-progress');
+
+        async function openScanner() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert("Browser Security Block: Camera access requires HTTPS and a modern browser.");
+                return;
+            }
             document.getElementById('camera-view').style.display = 'flex';
             try {
-                camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                document.getElementById('video').srcObject = camStream;
+                camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } });
+                video.srcObject = camStream;
+                await video.play();
+                // small delay to ensure dimensions are available
+                await new Promise(res => setTimeout(res, 200));
             } catch (err) {
-                alert("Permission Error: Please check your phone settings. Go to Settings > Safari/Chrome > Camera and set it to 'Allow'.");
+                alert("Permission Error: Please allow camera access in your browser settings.");
                 closeScanner();
             }
         }
 
-        function closeScanner() { if(camStream) camStream.getTracks().forEach(t => t.stop()); document.getElementById('camera-view').style.display = 'none'; }
-        async function capture() {
-            et camStream;
-
         function closeScanner() {
-        if(camStream) camStream.getTracks().forEach(t => t.stop());
-        document.getElementById('camera-view').style.display = 'none';
+            if (camStream) {
+                camStream.getTracks().forEach(t => t.stop());
+                camStream = null;
+            }
+            try { video.pause(); } catch(e){}
+            video.srcObject = null;
+            document.getElementById('camera-view').style.display = 'none';
         }
 
         async function capture() {
-        const v = document.getElementById('video');
-        const c = document.getElementById('canvas');
-        c.width = v.videoWidth;
-        c.height = v.videoHeight;
-        c.getContext('2d').drawImage(v, 0, 0);
+            try {
+                if (!video.videoWidth || !video.videoHeight) {
+                    await new Promise(res => setTimeout(res, 200));
+                    if (!video.videoWidth || !video.videoHeight) {
+                        alert('Camera not ready. Try again.');
+                        return;
+                    }
+                }
 
-}
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+                // draw with slight downscale to reduce OCR noise on very large images
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-renderFoods();
-</script>
+                // show loader and stop preview to reduce CPU usage
+                loader.style.display = 'flex';
+                progressEl.innerText = '0%';
+                // capture data URL
+                const dataUrl = canvas.toDataURL('image/png');
 
+                // stop camera preview while OCR runs
+                closeScanner();
+
+                // Use Tesseract with logger to update progress
+                const result = await Tesseract.recognize(dataUrl, 'eng', {
+                    logger: m => {
+                        if (m && m.status && typeof m.progress === 'number') {
+                            const pct = Math.round(m.progress * 100);
+                            progressEl.innerText = pct + '%';
+                        }
+                    }
+                });
+
+                const text = (result && result.data && result.data.text) ? result.data.text : '';
+                console.log('OCR text:', text);
+
+                // Parse values: prefer "per 100g" values for carbs/fat, and serving weight
+                // Patterns:
+                //  - Carbs per 100g: "Carbohydrate 12g per 100g" or "Carbs 12g / 100g" or "Carbs per 100g 12g"
+                //  - Fat per 100g: similar
+                //  - Serving size: "Serving size 30g" or "Serv 30 g" or "1 serving (30g)"
+                const lower = text.replace(/\r/g,'\n');
+
+                // Regex to find "number g per 100g" or "number /100g" near carb/fat keywords
+                const per100Regex = /(?:carb|carbohydrate|carbs)[^\d\n\r]{0,30}?(\d+\.?\d*)\s*g\s*(?:\/\s*100g|per\s*100g|per\s*100\s*g)?/i;
+                const per100RegexAlt = /(\d+\.?\d*)\s*g\s*(?:\/\s*100g|per\s*100g|per\s*100\s*g)[^\n\r]{0,30}?(?:carb|carbohydrate|carbs)/i;
+                const fatPer100Regex = /(?:fat|total fat)[^\d\n\r]{0,30}?(\d+\.?\d*)\s*g\s*(?:\/\s*100g|per\s*100g|per\s*100\s*g)?/i;
+                const fatPer100RegexAlt = /(\d+\.?\d*)\s*g\s*(?:\/\s*100g|per\s*100g|per\s*100\s*g)[^\n\r]{0,30}?(?:fat|total fat)/i;
+
+                // Serving size patterns
+                const servingRegex = /serv(?:ing)?(?: size)?[:\s]*?(\d+\.?\d*)\s*g/i;
+                const servingParenRegex = /\((\d+\.?\d*)\s*g\)/i;
+                const servingSimpleRegex = /(\d+\.?\d*)\s*g\s*(?:serving|serv)/i;
+
+                let c100 = null, f100 = null, serving = null;
+
+                let m = lower.match(per100Regex) || lower.match(per100RegexAlt);
+                if (m) c100 = m[1];
+
+                m = lower.match(fatPer100Regex) || lower.match(fatPer100RegexAlt);
+                if (m) f100 = m[1];
+
+                m = lower.match(servingRegex) || lower.match(servingParenRegex) || lower.match(servingSimpleRegex);
+                if (m) serving = m[1];
+
+                // If OCR didn't find per-100 but found per-serving values and serving weight, compute per-100
+                // Look for "Carbs 12g" (per serving) and "Serving 30g" -> carbs per 100g = (12 / 30) * 100
+                if ((!c100 || !f100) && serving) {
+                    // find carb per serving
+                    const carbPerServingRegex = /(?:carb|carbohydrate|carbs)[^\d\n\r]{0,30}?(\d+\.?\d*)\s*g(?!\s*\/\s*100g)/i;
+                    const fatPerServingRegex = /(?:fat|total fat)[^\d\n\r]{0,30}?(\d+\.?\d*)\s*g(?!\s*\/\s*100g)/i;
+                    const cm = lower.match(carbPerServingRegex);
+                    const fm = lower.match(fatPerServingRegex);
+                    const servVal = parseFloat(serving);
+                    if (cm && !c100 && servVal > 0) {
+                        const perServing = parseFloat(cm[1]);
+                        c100 = ((perServing / servVal) * 100).toFixed(1);
+                    }
+                    if (fm && !f100 && servVal > 0) {
+                        const perServingFat = parseFloat(fm[1]);
+                        f100 = ((perServingFat / servVal) * 100).toFixed(1);
+                    }
+                }
+
+                // Populate fields only with per-100 values and serving weight
+                if (c100) document.getElementById('c100').value = parseFloat(c100).toFixed(1);
+                if (f100) document.getElementById('f100').value = parseFloat(f100).toFixed(1);
+                if (serving) document.getElementById('portion').value = parseFloat(serving).toFixed(0);
+
+                // If we have per-100 and portion, run calc to fill per-serving carbs/fat
+                runCalc();
+
+                // For debugging: console.log parsed values
+                console.log('Parsed c100:', c100, 'f100:', f100, 'serving(g):', serving);
+
+            } catch (err) {
+                console.error('OCR error', err);
+                alert('Scanning failed. Try again or take a clearer photo.');
+            } finally {
+                loader.style.display = 'none';
+                progressEl.innerText = '0%';
+                // switch to calc tab if we populated per-100 fields
+                if (document.getElementById('c100').value || document.getElementById('f100').value) {
+                    setTab('calc');
+                } else {
+                    setTab('manual');
+                }
+            }
+        }
+
+        // initial render
+        renderFoods();
+    </script>
 </body>
 </html>
