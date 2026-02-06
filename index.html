@@ -69,7 +69,6 @@
         #scan-loader { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 4000; display: none; flex-direction: column; align-items: center; justify-content: center; color: white; }
         #scan-progress { margin-top: 12px; font-weight:700; }
 
-        /* Settings button */
         .header-actions { display:flex; gap:12px; align-items:center; }
         .icon-btn { background:none; border:1px solid transparent; color:var(--text); padding:8px; border-radius:8px; cursor:pointer; }
     </style>
@@ -142,7 +141,6 @@
         </div>
     </div>
 
-    <!-- Settings modal -->
     <div class="modal" id="settings-modal">
         <div class="modal-content">
             <h3 style="margin-bottom:12px;">Settings</h3>
@@ -177,7 +175,6 @@
     <canvas id="canvas" style="display:none;"></canvas>
 
     <script>
-        // Database
         const initialData = [
             { id: 101, name: "Apricot Nuts & Seeds Muesli", cat: "Cereal/Breakfasts", carbs: 21, fat: 6, measure: "1/2C" },
             { id: 102, name: "Harraways Scotch Oats", cat: "Cereal/Breakfasts", carbs: 34, fat: 4, measure: "1/2C" },
@@ -189,7 +186,6 @@
         let selected = new Set();
         lucide.createIcons();
 
-        // Settings defaults
         const defaultSettings = {
             name: '',
             primary: '#38bdf8',
@@ -200,7 +196,6 @@
         function loadSettings() {
             const raw = localStorage.getItem('bb_settings');
             const s = raw ? JSON.parse(raw) : defaultSettings;
-            // merge missing keys
             const settings = Object.assign({}, defaultSettings, s);
             settings.scanItems = Object.assign({}, defaultSettings.scanItems, settings.scanItems || {});
             applySettings(settings);
@@ -208,21 +203,17 @@
         }
 
         function applySettings(settings) {
-            // apply colors
             if (settings.primary) document.documentElement.style.setProperty('--primary', settings.primary);
             if (settings.accent) document.documentElement.style.setProperty('--accent', settings.accent);
-            // update UI name
             const title = document.getElementById('app-title');
             if (settings.name && settings.name.trim()) title.innerText = `BolusBuddy — ${settings.name.trim()}`;
             else title.innerText = 'BolusBuddy Pro';
-            // populate settings modal fields if open
             document.getElementById('setting-name').value = settings.name || '';
             document.getElementById('setting-primary').value = settings.primary || '';
             document.getElementById('setting-accent').value = settings.accent || '';
             document.getElementById('scan-carb').checked = !!settings.scanItems.carb;
             document.getElementById('scan-fat').checked = !!settings.scanItems.fat;
             document.getElementById('scan-serving').checked = !!settings.scanItems.serving;
-            // store current settings in memory for runtime use
             window._bb_settings = settings;
         }
 
@@ -245,7 +236,6 @@
         function openSettings() { document.getElementById('settings-modal').classList.add('active'); }
         function closeSettings() { document.getElementById('settings-modal').classList.remove('active'); }
 
-        // Theme toggle
         function toggleTheme() {
             const current = document.body.getAttribute('data-theme');
             setTheme(current === 'dark' ? 'light' : 'dark');
@@ -259,7 +249,6 @@
         }
         setTheme(localStorage.getItem('bb_theme') || 'dark');
 
-        // Render list
         function renderFoods() {
             const query = document.getElementById('search-input').value.toLowerCase();
             const list = document.getElementById('food-list');
@@ -341,7 +330,6 @@
             closeModal();
         }
 
-        // CAMERA + OCR (reads Carbs/100g, Fat/100g, and Serving weight) - respects settings
         let camStream = null;
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
@@ -407,14 +395,11 @@
                 const text = (result && result.data && result.data.text) ? result.data.text : '';
                 console.log('OCR text:', text);
 
-                // Use settings to decide what to parse
                 const settings = window._bb_settings || loadSettings();
-
                 const lower = text.replace(/\r/g,'\n');
 
                 let c100 = null, f100 = null, serving = null;
 
-                // Only attempt to parse carbs per 100g if enabled
                 if (settings.scanItems.carb) {
                     const per100Regex = /(?:carb|carbohydrate|carbs)[^\d\n\r]{0,30}?(\d+\.?\d*)\s*g\s*(?:\/\s*100g|per\s*100g|per\s*100\s*g)?/i;
                     const per100RegexAlt = /(\d+\.?\d*)\s*g\s*(?:\/\s*100g|per\s*100g|per\s*100\s*g)[^\n\r]{0,30}?(?:carb|carbohydrate|carbs)/i;
@@ -437,8 +422,7 @@
                     if (m) serving = m[1];
                 }
 
-                // If per-100 not found but serving and per-serving values exist and corresponding scan item enabled, compute per-100
-                if (settings.scanItems.serving && (settings.scanItems.carb && !c100 || settings.scanItems.fat && !f100) && serving) {
+                if (settings.scanItems.serving && ( (settings.scanItems.carb && !c100) || (settings.scanItems.fat && !f100) ) && serving) {
                     const carbPerServingRegex = /(?:carb|carbohydrate|carbs)[^\d\n\r]{0,30}?(\d+\.?\d*)\s*g(?!\s*\/\s*100g)/i;
                     const fatPerServingRegex = /(?:fat|total fat)[^\d\n\r]{0,30}?(\d+\.?\d*)\s*g(?!\s*\/\s*100g)/i;
                     const cm = lower.match(carbPerServingRegex);
@@ -454,7 +438,6 @@
                     }
                 }
 
-                // Populate only the per-100 fields and portion if parsed and enabled
                 if (c100 && settings.scanItems.carb) document.getElementById('c100').value = parseFloat(c100).toFixed(1);
                 if (f100 && settings.scanItems.fat) document.getElementById('f100').value = parseFloat(f100).toFixed(1);
                 if (serving && settings.scanItems.serving) document.getElementById('portion').value = parseFloat(serving).toFixed(0);
@@ -468,4 +451,19 @@
             } finally {
                 loader.style.display = 'none';
                 progressEl.innerText = '0%';
-                // switch to calc tab if per-100 fields
+                if (document.getElementById('c100').value || document.getElementById('f100').value) {
+                    setTab('calc');
+                } else {
+                    setTab('manual');
+                }
+                updateModalTitle();
+                renderFoods();
+                lucide.createIcons();
+            }
+        }
+
+        loadSettings();
+        renderFoods();
+    </script>
+</body>
+</html>
