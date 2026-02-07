@@ -578,79 +578,15 @@
         <div class="modal-content">
             <div class="modal-header" id="modalTitle">Add New Food</div>
             <form id="addForm">
-                <input type="hidden" id="editCategory">
-                <input type="hidden" id="editIndex">
-                
                 <div class="form-group">
-                    <label class="form-label">Category</label>
-                    <select class="form-select" id="categorySelect" required>
-                        <option value="">Select category...</option>
-                        <option value="Cereal/Breakfasts">Cereal/Breakfasts</option>
-                        <option value="Biscuits/Cakes">Biscuits/Cakes</option>
-                        <option value="Dinners">Dinners</option>
-                        <option value="Desserts">Desserts</option>
-                        <option value="Veges/Rice">Veges/Rice</option>
-                        <option value="Crackers">Crackers</option>
-                        <option value="Lollies/Misc">Lollies/Misc</option>
-                        <option value="Custom">+ New Category</option>
-                    </select>
+                    <button type="button" class="camera-btn" onclick="document.getElementById('nativeCamera').click()">
+                        📸 Take Sharp Photo of Label
+                    </button>
+                    <input type="file" id="nativeCamera" accept="image/*" capture="environment" style="display:none" onchange="processSharpPhoto(this)">
+                    <div id="ocrStatus" class="ocr-status" style="display:block; margin-top: 10px; font-weight: bold; text-align: center; min-height: 20px; white-space: pre-wrap; color: var(--primary);"></div>
                 </div>
-                
-                <div class="form-group hidden" id="customCategoryGroup">
-                    <label class="form-label">New Category Name</label>
-                    <input type="text" class="form-input" id="customCategory">
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Food Name</label>
-                    <input type="text" class="form-input" id="foodName" required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Measure (e.g., 1/2C, 100g)</label>
-                    <input type="text" class="form-input" id="measure" required>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Carbs (g)</label>
-                        <input type="number" step="0.1" class="form-input" id="carbs" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Fat (g)</label>
-                        <input type="number" step="0.1" class="form-input" id="fat" required>
-                    </div>
-                </div>
-                
-		<button type="button" class="camera-btn" onclick="document.getElementById('nativeCamera').click()">
-    📸 Take Sharp Photo of Label
-</button>
-<input type="file" id="nativeCamera" accept="image/*" capture="environment" style="display:none" onchange="processSharpPhoto(this)">
-<div id="ocrStatus" class="ocr-status" style="display:block; margin-top: 10px; font-weight: bold; min-height: 20px; text-align: center;"></div>
-                
+
                 <button type="button" class="calc-toggle" id="calcToggle">🧮 Use Calculator (from 100g label)</button>
-                
-                <div class="calculator hidden" id="calculator">
-                    <div class="calc-header">Nutrition Label Calculator</div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Carbs per 100g</label>
-                            <input type="number" step="0.1" class="form-input" id="carbsPer100g">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Fat per 100g</label>
-                            <input type="number" step="0.1" class="form-input" id="fatPer100g">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Actual serving weight (g)</label>
-                        <input type="number" step="0.1" class="form-input" id="servingWeight">
-                    </div>
-                    <div class="calc-result" id="calcResult"></div>
-                    <button type="button" class="btn btn-primary" id="applyCalc" style="width: 100%; margin-top: 8px;">Apply Values</button>
-                </div>
-                
-                <div class="form-group">
                     <label class="form-label">Notes (optional)</label>
                     <input type="text" class="form-input" id="notes">
                 </div>
@@ -1042,55 +978,45 @@
             }
         });
 
-        // New High-Quality Photo Processing for S24 FE
-        async function processSharpPhoto(input) {
+async function processSharpPhoto(input) {
             if (!input.files || !input.files[0]) return;
-            
-            const file = input.files[0];
             const statusDiv = document.getElementById('ocrStatus');
-            
-            // UI Feedback
             statusDiv.textContent = '🔍 Reading image... 0%';
-            statusDiv.style.color = 'var(--primary)';
             
             try {
-                const result = await Tesseract.recognize(file, 'eng', {
-                    logger: m => {
-                        if (m.status === 'recognizing text') {
-                            statusDiv.textContent = `🔍 Reading... ${Math.round(m.progress * 100)}%`;
-                        }
-                    }
+                const result = await Tesseract.recognize(input.files[0], 'eng', {
+                    logger: m => { if (m.status === 'recognizing text') statusDiv.textContent = `🔍 Reading... ${Math.round(m.progress * 100)}%`; }
                 });
                 
-                const text = result.data.text.toLowerCase().replace(/\s+/g, ' ').replace(/[,]/g, '.');
-                
-                // Search for nutrition keywords
-                const carbMatch = text.match(/(?:carb|carbohydrate|total carb)[\s\w]*?(\d+\.?\d*)/);
-                const fatMatch = text.match(/(?:fat|total fat)[\s\w]*?(\d+\.?\d*)/);
-                
+                // Clean text: remove commas, lowercase everything
+                const text = result.data.text.toLowerCase().replace(/[,]/g, '.');
+                console.log("Full Text:", text);
+
+                // This "Super-Search" looks for common label variations
+                const carbMatch = text.match(/(?:carb|carbohydrate|total carb|total carbohydrate|avail\. carb)[\s\w\(\)\.]*?(\d+\.?\d*)/);
+                const fatMatch = text.match(/(?:fat|total fat|lipid)[\s\w\(\)\.]*?(\d+\.?\d*)/);
+
                 if (carbMatch || fatMatch) {
-                    // Fill both the main form and the calculator for convenience
                     if (carbMatch) {
-                        document.getElementById('carbsPer100g').value = carbMatch[1];
                         document.getElementById('carbs').value = carbMatch[1];
+                        document.getElementById('carbsPer100g').value = carbMatch[1];
                     }
                     if (fatMatch) {
-                        document.getElementById('fatPer100g').value = fatMatch[1];
                         document.getElementById('fat').value = fatMatch[1];
+                        document.getElementById('fatPer100g').value = fatMatch[1];
                     }
+                    statusDiv.textContent = '✅ Success! Numbers filled.';
+                    statusDiv.style.color = 'green';
                     
-                    // Force the calculator to show so you can adjust for serving size
+                    // Open calculator automatically
                     document.getElementById('calculator').classList.remove('hidden');
                     document.getElementById('calcToggle').textContent = '✖️ Close Calculator';
-                    
-                    statusDiv.textContent = '✅ Found values! Check calculator below.';
-                    statusDiv.style.color = 'green';
                 } else {
-                    statusDiv.textContent = '⚠️ Could not find "Carbohydrate" or "Fat" text.';
+                    statusDiv.textContent = '⚠️ Text read, but keywords like "Carb" not found.\nTry a clearer photo of the 100g column.';
                     statusDiv.style.color = 'orange';
                 }
             } catch (err) {
-                statusDiv.textContent = '❌ Error: Try a clearer photo.';
+                statusDiv.textContent = '❌ Error processing image.';
                 statusDiv.style.color = 'red';
             }
             input.value = ''; 
