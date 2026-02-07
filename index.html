@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-<title>Carb Tracker — Balanced Dual‑Wave (Adjusted)</title>
+<title>Carb Tracker — Balanced Dual‑Wave</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   :root{
     --primary:#1a472a;--accent:#5f9767;--bg:#fafbf9;--surface:#fff;--text:#2a3b2e;--muted:#5a6b5e;--border:#dfe6e0;--danger:#c93a3a;
   }
-  body{font-family:-apple-system,system-ui,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text);padding-bottom:140px}
+  body{font-family:-apple-system,system-ui,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text);padding-bottom:160px}
   .header{background:var(--primary);color:#fff;padding:12px 16px;position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between}
   .header-left{display:flex;align-items:center;gap:12px}
   h1{font-size:18px;margin-right:6px}
@@ -43,7 +43,8 @@
   .meal-color-high{background:linear-gradient(90deg,#e87d47,#d66b3a)}
   .meal-color-very{background:linear-gradient(90deg,#d95d47,#c84b36)}
   .meal-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-weight:700}
-  #totalCarbs{font-size:20px;font-weight:900;color:#fff}
+  #totalCarbs{font-size:20px;font-weight:900;color:#ffffff;text-shadow:0 1px 0 rgba(0,0,0,0.35),0 2px 6px rgba(0,0,0,0.25);letter-spacing:0.4px;font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+  .unit { margin-left:6px; color:#ffffff; font-weight:700; }
   .bolus-info{margin-top:8px;background:rgba(255,255,255,0.06);padding:8px;border-radius:8px;color:#fff}
   .selected-list{margin-top:8px;max-height:160px;overflow:auto;background:rgba(255,255,255,0.06);padding:8px;border-radius:8px}
   .selected-item{display:flex;justify-content:space-between;align-items:center;padding:6px;border-radius:6px}
@@ -62,6 +63,8 @@
   .small-muted{font-size:12px;color:var(--muted)}
   .item-action-btn{background:transparent;border:none;font-size:16px;cursor:pointer;padding:6px;border-radius:6px}
   .clear-meal-btn{background:rgba(255,255,255,0.12);border:none;color:#fff;padding:6px 10px;border-radius:8px;cursor:pointer;margin-left:8px}
+  /* ensure fat/protein text in meal panel is white and consistent */
+  #bolusBlock, #bolusBlock .small-muted, #bolusBlock span { color: #ffffff !important; }
 </style>
 </head>
 <body>
@@ -90,18 +93,18 @@
 
   <main class="content" id="content"></main>
 
-  <button class="fab" id="openAdd">+</button>
+  <button class="fab" id="openAdd" aria-label="Add food">+</button>
 
   <div id="mealTotal" class="meal-total" role="region" aria-label="Meal total">
     <div style="display:flex;align-items:center;justify-content:space-between">
-      <div class="meal-row"><div>Carbs</div><div id="totalCarbs">0g</div></div>
+      <div class="meal-row"><div>Carbs</div><div id="totalCarbs">0 <span class="unit">g</span></div></div>
       <div>
         <button id="clearMeal" class="clear-meal-btn" title="Clear selection">Clear</button>
       </div>
     </div>
     <div id="bolusBlock" class="bolus-info hidden">
       <div id="bolusText" style="font-weight:800"></div>
-      <div class="small-muted" style="margin-top:6px">Fat: <span id="totalFat">0g</span> · Protein: <span id="totalProtein">0g</span></div>
+      <div class="small-muted" style="margin-top:6px">Fat: <span id="totalFat">0</span> g · Protein: <span id="totalProtein">0</span> g</div>
       <div class="selected-list" id="selectedList" aria-live="polite"></div>
     </div>
   </div>
@@ -207,9 +210,7 @@ presetEl.addEventListener('change', () => {
   render();
 });
 
-/* Dual-wave computation
-   Balanced preset behavior: require at least 40% extended to recommend dual-wave; otherwise treat as straight bolus
-*/
+/* Dual-wave computation (weighted mode kept; Balanced requires >=40% to extend) */
 function computeDualWave(carbs, fat, protein, opts = {}) {
   const eps = 1e-4;
   const presetName = opts.preset || localStorage.getItem('bb_preset') || 'Balanced';
@@ -231,14 +232,14 @@ function computeDualWave(carbs, fat, protein, opts = {}) {
   let percent = Math.min(Math.max(score * 100, 0), cfg.cap);
   percent = Math.round(percent / 5) * 5;
 
-  // Balanced preset: require at least 40% to recommend extended; otherwise treat as straight bolus
+  // Balanced preset rule: require at least 40% to recommend extended
   if (presetName === 'Balanced' && percent < 40) percent = 0;
 
   let duration = 0;
   if (percent === 0) duration = 0;
-  else if (percent <= 20) duration = 1 + Math.round((percent - 5) / 15 * 1);
-  else if (percent <= 40) duration = 2 + Math.round((percent - 25) / 15 * 1);
-  else if (percent <= 60) duration = 3 + Math.round((percent - 45) / 15 * 1);
+  else if (percent <= 20) duration = 1;
+  else if (percent <= 40) duration = 2;
+  else if (percent <= 60) duration = 3;
   else duration = 4 + Math.round((percent - 65) / 15 * 2);
   if (duration < 0) duration = 0;
 
@@ -314,9 +315,9 @@ function updateMealPanel(){
     mealEl.className = 'meal-total';
     mealEl.classList.remove('show');
     bolusBlock.classList.add('hidden');
-    document.getElementById('totalCarbs').innerText='0g';
-    document.getElementById('totalFat').innerText='0g';
-    document.getElementById('totalProtein').innerText='0g';
+    document.getElementById('totalCarbs').innerHTML='0 <span class="unit">g</span>';
+    document.getElementById('totalFat').innerText='0';
+    document.getElementById('totalProtein').innerText='0';
     document.getElementById('bolusText').innerText='';
     return;
   }
@@ -327,9 +328,9 @@ function updateMealPanel(){
     const it = (data[cat]||[])[Number(idx)];
     if(it){ tc += Number(it.carbs||0); tf += Number(it.fat||0); tp += Number(it.protein||0); }
   });
-  document.getElementById('totalCarbs').innerText = tc.toFixed(1)+'g';
-  document.getElementById('totalFat').innerText = tf.toFixed(1)+'g';
-  document.getElementById('totalProtein').innerText = tp.toFixed(1)+'g';
+  document.getElementById('totalCarbs').innerHTML = tc.toFixed(1) + ' <span class="unit">g</span>';
+  document.getElementById('totalFat').innerText = tf.toFixed(1);
+  document.getElementById('totalProtein').innerText = tp.toFixed(1);
   const rec = computeDualWave(tc, tf, tp);
   const later = rec.percent;
   const now = rec.percent === 0 ? 100 : Math.max(0, 100 - later);
@@ -404,7 +405,7 @@ categoryEl.addEventListener('change', ()=>{ if(categoryEl.value==='__new__'){ co
 
 function resetForm(){
   nameEl.value=''; measureEl.value=''; carbsEl.value=''; fatEl.value=''; proteinEl.value=''; notesEl.value=''; c100El.value=''; f100El.value=''; p100El.value=''; servingEl.value=''; applyCalcBtn.disabled=true;
-  cameraPreview.src=''; cameraPreview.style.display='none'; ocrStatus.style.display='none';
+  cameraPreview.src=''; cameraPreview.style.display='none'; ocrStatus.style.display='none'; ocrStatus.innerHTML='';
 }
 
 /* Apply calculator */
@@ -475,18 +476,37 @@ function deleteItem(cat, idx){
 }
 window.deleteItem = deleteItem;
 
-/* OCR worker and preprocessing */
+/* OCR worker and preprocessing with retry button */
 async function ensureWorker(){
   if(workerReady) return;
   try{
-    if(!ocrWorker) ocrWorker = Tesseract.createWorker({ logger: m => { if(m && typeof m.progress === 'number'){ ocrStatus.style.display='block'; ocrStatus.className='ocr-status active'; ocrStatus.innerText='OCR: '+Math.round(m.progress*100)+'%'; } }});
+    if(!ocrWorker) ocrWorker = Tesseract.createWorker({ logger: m => { if(m && typeof m.progress === 'number'){ showOcrStatus('OCR: '+Math.round(m.progress*100)+'%',''); } }});
     await ocrWorker.load(); await ocrWorker.loadLanguage('eng'); await ocrWorker.initialize('eng');
     await ocrWorker.setParameters({ tessedit_char_whitelist:'0123456789.gmper/abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ:-() ', preserve_interword_spaces:'1' });
     workerReady = true;
-    ocrStatus.style.display='block'; ocrStatus.className='ocr-status ocr-success active'; ocrStatus.innerText='OCR ready';
-  }catch(e){ console.error('worker init',e); workerReady=false; ocrStatus.style.display='block'; ocrStatus.className='ocr-status ocr-error active'; ocrStatus.innerText='OCR engine unavailable'; }
+    showOcrStatus('OCR ready','ocr-success');
+  }catch(e){ console.error('worker init',e); workerReady=false; showOcrStatus('OCR engine unavailable','ocr-error'); }
 }
 
+function showOcrStatus(text, cls = '') {
+  const s = document.getElementById('ocrStatus');
+  s.style.display = 'block';
+  s.className = 'ocr-status ' + (cls || '');
+  s.innerHTML = text;
+  if (cls === 'ocr-error') {
+    const btn = document.createElement('button');
+    btn.textContent = 'Retry OCR';
+    btn.className = 'btn';
+    btn.style.marginLeft = '8px';
+    btn.addEventListener('click', async () => {
+      s.innerText = 'Retrying OCR...';
+      try { await ensureWorker(); s.innerText = 'OCR ready — try scanning again'; } catch(e){ s.innerText = 'Retry failed'; }
+    });
+    s.appendChild(btn);
+  }
+}
+
+/* image preprocessing: grayscale + contrast stretch */
 function preprocessImage(dataUrl, maxWidth=1200){
   return new Promise((res,rej)=>{
     const img = new Image();
@@ -510,15 +530,15 @@ function preprocessImage(dataUrl, maxWidth=1200){
 
 async function runOcr(dataUrl){
   try{
-    ocrStatus.style.display='block'; ocrStatus.className='ocr-status active'; ocrStatus.innerText='Preparing image...';
+    showOcrStatus('Preparing image...','');
     await ensureWorker();
-    if(!workerReady){ ocrStatus.className='ocr-status ocr-error active'; ocrStatus.innerText='OCR engine unavailable'; return; }
+    if(!workerReady){ showOcrStatus('OCR engine unavailable','ocr-error'); return; }
     const pre = await preprocessImage(dataUrl, 1200);
-    ocrStatus.className='ocr-status active'; ocrStatus.innerText='Scanning...';
+    showOcrStatus('Scanning...','');
     const { data: { text } } = await ocrWorker.recognize(pre);
-    ocrStatus.className='ocr-status'; ocrStatus.innerText='OCR complete — parsing';
+    showOcrStatus('OCR complete — parsing','ocr-success');
     parseLabelText(text || '');
-  }catch(e){ console.error('ocr',e); ocrStatus.className='ocr-status ocr-error active'; ocrStatus.innerText='OCR failed — try a clearer photo'; }
+  }catch(e){ console.error('ocr',e); showOcrStatus('OCR failed — try a clearer photo','ocr-error'); }
 }
 
 /* parse label text for per-100g carbs/fat/protein and serving with fallbacks */
@@ -578,11 +598,9 @@ function parseLabelText(text){
 
   // final status
   if(c100 || f100 || p100) {
-    ocrStatus.className='ocr-status ocr-success active';
-    ocrStatus.innerText = 'OCR parsed values (populated where found)';
+    showOcrStatus('OCR parsed values (populated where found)','ocr-success');
   } else {
-    ocrStatus.className='ocr-status ocr-error active';
-    ocrStatus.innerText = 'No clear nutrition values found. Try a different photo or use calculator';
+    showOcrStatus('No clear nutrition values found. Try a different photo or use calculator','ocr-error');
   }
 }
 
@@ -593,7 +611,7 @@ fileInput.addEventListener('change', async (ev)=>{
   const reader = new FileReader();
   reader.onload = async ()=> {
     cameraPreview.src = reader.result; cameraPreview.style.display='block';
-    ocrStatus.style.display='block'; ocrStatus.className='ocr-status active'; ocrStatus.innerText='Processing image...';
+    showOcrStatus('Processing image...','');
     await runOcr(reader.result);
   };
   reader.readAsDataURL(f);
