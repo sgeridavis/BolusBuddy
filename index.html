@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-<title>Carb Tracker — Balanced Dual‑Wave</title>
+<title>Carb Tracker — Balanced Dual‑Wave (Adjusted)</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  :root{--primary:#1a472a;--accent:#5f9767;--bg:#fafbf9;--surface:#fff;--text:#2a3b2e;--muted:#5a6b5e;--border:#dfe6e0;--danger:#c93a3a}
+  :root{
+    --primary:#1a472a;--accent:#5f9767;--bg:#fafbf9;--surface:#fff;--text:#2a3b2e;--muted:#5a6b5e;--border:#dfe6e0;--danger:#c93a3a;
+  }
   body{font-family:-apple-system,system-ui,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text);padding-bottom:140px}
   .header{background:var(--primary);color:#fff;padding:12px 16px;position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between}
   .header-left{display:flex;align-items:center;gap:12px}
@@ -20,7 +22,8 @@
   .category{margin-bottom:20px}
   .category-header{background:#2d6b45;color:#fff;padding:10px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;font-weight:700}
   .items{display:grid;gap:8px;margin-top:10px}
-  .item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;cursor:pointer}
+  .item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center}
+  .item.clickable{cursor:pointer}
   .item.selected{border-color:var(--accent);background:#f0f7f2}
   .item-checkbox{width:20px;height:20px;accent-color:var(--accent)}
   .item-name{font-weight:700}
@@ -33,13 +36,14 @@
   .item-actions{display:flex;gap:8px}
   .btn{padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
   .fab{position:fixed;right:20px;bottom:20px;width:56px;height:56px;border-radius:50%;background:var(--primary);color:#fff;border:none;font-size:24px;z-index:200}
-  .meal-total{position:fixed;right:20px;bottom:96px;padding:14px 18px;border-radius:12px;min-width:260px;box-shadow:0 8px 24px rgba(0,0,0,0.2);z-index:150;display:none;border:2px solid rgba(0,0,0,0.06);color:#fff}
+  .meal-total{position:fixed;right:20px;bottom:96px;padding:14px 18px;border-radius:12px;min-width:260px;box-shadow:0 8px 24px rgba(0,0,0,0.2);z-index:150;display:none;border:2px solid rgba(0,0,0,0.06);background:linear-gradient(90deg,#5f9767,#4f8a5b);color:#fff}
   .meal-total.show{display:block}
-  .meal-color-low{background:linear-gradient(90deg,#5f9767,#4f8a5b);border-color:#4f8a5b}
-  .meal-color-moderate{background:linear-gradient(90deg,#e8a647,#d79a3f);border-color:#d79a3f}
-  .meal-color-high{background:linear-gradient(90deg,#e87d47,#d66b3a);border-color:#d66b3a}
-  .meal-color-very{background:linear-gradient(90deg,#d95d47,#c84b36);border-color:#c84b36}
+  .meal-color-low{background:linear-gradient(90deg,#5f9767,#4f8a5b)}
+  .meal-color-moderate{background:linear-gradient(90deg,#e8a647,#d79a3f)}
+  .meal-color-high{background:linear-gradient(90deg,#e87d47,#d66b3a)}
+  .meal-color-very{background:linear-gradient(90deg,#d95d47,#c84b36)}
   .meal-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-weight:700}
+  #totalCarbs{font-size:20px;font-weight:900;color:#fff}
   .bolus-info{margin-top:8px;background:rgba(255,255,255,0.06);padding:8px;border-radius:8px;color:#fff}
   .selected-list{margin-top:8px;max-height:160px;overflow:auto;background:rgba(255,255,255,0.06);padding:8px;border-radius:8px}
   .selected-item{display:flex;justify-content:space-between;align-items:center;padding:6px;border-radius:6px}
@@ -57,6 +61,7 @@
   .hidden{display:none !important}
   .small-muted{font-size:12px;color:var(--muted)}
   .item-action-btn{background:transparent;border:none;font-size:16px;cursor:pointer;padding:6px;border-radius:6px}
+  .clear-meal-btn{background:rgba(255,255,255,0.12);border:none;color:#fff;padding:6px 10px;border-radius:8px;cursor:pointer;margin-left:8px}
 </style>
 </head>
 <body>
@@ -87,16 +92,21 @@
 
   <button class="fab" id="openAdd">+</button>
 
-  <div id="mealTotal" class="meal-total">
-    <div class="meal-row"><div>Carbs</div><div id="totalCarbs">0g</div></div>
+  <div id="mealTotal" class="meal-total" role="region" aria-label="Meal total">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div class="meal-row"><div>Carbs</div><div id="totalCarbs">0g</div></div>
+      <div>
+        <button id="clearMeal" class="clear-meal-btn" title="Clear selection">Clear</button>
+      </div>
+    </div>
     <div id="bolusBlock" class="bolus-info hidden">
       <div id="bolusText" style="font-weight:800"></div>
       <div class="small-muted" style="margin-top:6px">Fat: <span id="totalFat">0g</span> · Protein: <span id="totalProtein">0g</span></div>
-      <div class="selected-list" id="selectedList"></div>
+      <div class="selected-list" id="selectedList" aria-live="polite"></div>
     </div>
   </div>
 
-  <div class="modal" id="addModal">
+  <div class="modal" id="addModal" role="dialog" aria-modal="true">
     <div class="modal-content">
       <h3 id="modalTitle">Add / Edit Food</h3>
 
@@ -104,7 +114,7 @@
         <button id="scanBtn" class="btn" style="background:var(--accent);color:#fff">📸 Scan Label</button>
         <input id="fileInput" type="file" accept="image/*" capture="environment" class="hidden" />
         <img id="cameraPreview" class="camera-preview" alt="preview" />
-        <div id="ocrStatus" class="ocr-status"></div>
+        <div id="ocrStatus" class="ocr-status" aria-live="polite"></div>
       </div>
 
       <div style="margin-top:8px">
@@ -197,7 +207,9 @@ presetEl.addEventListener('change', () => {
   render();
 });
 
-/* Dual-wave computation */
+/* Dual-wave computation
+   Balanced preset behavior: require at least 40% extended to recommend dual-wave; otherwise treat as straight bolus
+*/
 function computeDualWave(carbs, fat, protein, opts = {}) {
   const eps = 1e-4;
   const presetName = opts.preset || localStorage.getItem('bb_preset') || 'Balanced';
@@ -219,6 +231,9 @@ function computeDualWave(carbs, fat, protein, opts = {}) {
   let percent = Math.min(Math.max(score * 100, 0), cfg.cap);
   percent = Math.round(percent / 5) * 5;
 
+  // Balanced preset: require at least 40% to recommend extended; otherwise treat as straight bolus
+  if (presetName === 'Balanced' && percent < 40) percent = 0;
+
   let duration = 0;
   if (percent === 0) duration = 0;
   else if (percent <= 20) duration = 1 + Math.round((percent - 5) / 15 * 1);
@@ -230,10 +245,11 @@ function computeDualWave(carbs, fat, protein, opts = {}) {
   return { percent, duration, cfg };
 }
 
-/* Rendering */
+/* Rendering helpers */
 function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function escapeJs(s){ return String(s||'').replace(/'/g,"\\'").replace(/"/g,'\\"') }
 
+/* Render list and badges; new items are not auto-selected */
 function render(){
   const content = document.getElementById('content');
   const q = (document.getElementById('searchInput').value || '').toLowerCase();
@@ -255,19 +271,18 @@ function render(){
       const fat = Number(it.fat||0);
       const protein = Number(it.protein||0);
       const rec = computeDualWave(carbs, fat, protein);
-      // compute now/later split for display: now = 100 - extendedPercent, later = extendedPercent
       const later = rec.percent;
-      const now = Math.max(0, 100 - later);
+      const now = rec.percent === 0 ? 100 : Math.max(0, 100 - later);
       let cls = 'carb-low';
       if(rec.percent >= 50) cls = 'carb-very';
       else if(rec.percent >= 30) cls = 'carb-high';
       else if(rec.percent >= 15) cls = 'carb-moderate';
-      html += `<div class="item ${isSel? 'selected':''}" onclick="toggleSelect('${escapeJs(cat)}',${idx})">` +
-              `<input type="checkbox" class="item-checkbox" ${isSel? 'checked':''} onclick="event.stopPropagation(); toggleSelect('${escapeJs(cat)}',${idx})" />` +
+      html += `<div class="item ${isSel? 'selected':''} item-clickable" data-cat="${escapeHtml(cat)}" data-idx="${idx}">` +
+              `<input type="checkbox" class="item-checkbox" ${isSel? 'checked':''} onclick="event.stopPropagation(); toggleSelect('${escapeJs(cat)}',${idx})" aria-label="Select ${escapeHtml(it.name)}" />` +
               `<div><div class="item-name">${escapeHtml(it.name)}</div><div class="item-measure">${escapeHtml(it.measure)}</div></div>` +
               `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">` +
               `<div class="carb-badge ${cls}">${carbs}g</div>` +
-              `<div class="small-muted" style="font-size:12px">Now ${now}% · Later ${later}%</div>` +
+              `<div class="small-muted" style="font-size:12px">${rec.percent === 0 ? 'Standard' : 'Now '+now+'% · Later '+later+'%'}</div>` +
               `<div style="margin-top:6px;display:flex;gap:6px">` +
               `<button class="item-action-btn" title="Edit" onclick="event.stopPropagation(); openEdit('${escapeJs(cat)}',${idx})">✎</button>` +
               `<button class="item-action-btn" title="Delete" onclick="event.stopPropagation(); deleteItem('${escapeJs(cat)}',${idx})">🗑</button>` +
@@ -281,7 +296,7 @@ function render(){
   updateMealPanel();
 }
 
-/* Selection */
+/* Selection toggle and clear */
 function toggleSelect(cat, idx){
   const id = `${cat}::${idx}`;
   if(selected.has(id)) selected.delete(id); else selected.add(id);
@@ -289,7 +304,7 @@ function toggleSelect(cat, idx){
 }
 function clearSelection(){ selected.clear(); render(); }
 
-/* Meal panel with color mapping and selected list with remove buttons */
+/* Meal panel: aggregated selection only; Clear button clears selection (not data) */
 function updateMealPanel(){
   const mealEl = document.getElementById('mealTotal');
   const bolusBlock = document.getElementById('bolusBlock');
@@ -317,7 +332,7 @@ function updateMealPanel(){
   document.getElementById('totalProtein').innerText = tp.toFixed(1)+'g';
   const rec = computeDualWave(tc, tf, tp);
   const later = rec.percent;
-  const now = Math.max(0, 100 - later);
+  const now = rec.percent === 0 ? 100 : Math.max(0, 100 - later);
   document.getElementById('bolusText').innerText = rec.percent === 0 ? 'Standard' : `Now ${now}% · Later ${later}% · ${rec.duration}h`;
   bolusBlock.classList.remove('hidden');
   mealEl.classList.add('show');
@@ -335,19 +350,23 @@ function updateMealPanel(){
     const carbs = Number(it.carbs||0), fat = Number(it.fat||0), protein = Number(it.protein||0);
     const recItem = computeDualWave(carbs, fat, protein);
     const laterItem = recItem.percent;
-    const nowItem = Math.max(0, 100 - laterItem);
+    const nowItem = recItem.percent === 0 ? 100 : Math.max(0, 100 - laterItem);
     const div = document.createElement('div');
     div.className = 'selected-item';
-    div.innerHTML = `<div style="display:flex;flex-direction:column"><div style="font-weight:700">${escapeHtml(it.name)}</div><div class="small-muted" style="font-size:12px">${carbs}g · Now ${nowItem}% · Later ${laterItem}%</div></div>` +
+    div.innerHTML = `<div style="display:flex;flex-direction:column"><div style="font-weight:700">${escapeHtml(it.name)}</div><div class="small-muted" style="font-size:12px">${carbs}g · ${recItem.percent === 0 ? 'Standard' : 'Now '+nowItem+'% · Later '+laterItem+'%'}</div></div>` +
                     `<div><button class="remove-btn" title="Remove" onclick="event.stopPropagation(); removeSelected('${escapeJs(id)}')">✖</button></div>`;
     selectedList.appendChild(div);
   });
 }
 
+/* remove single selected item */
 function removeSelected(id){
   selected.delete(id);
   render();
 }
+
+/* Clear button wiring */
+document.getElementById('clearMeal').addEventListener('click', ()=>{ clearSelection(); });
 
 /* Modal and form wiring */
 const openAdd = document.getElementById('openAdd');
@@ -388,6 +407,7 @@ function resetForm(){
   cameraPreview.src=''; cameraPreview.style.display='none'; ocrStatus.style.display='none';
 }
 
+/* Apply calculator */
 applyCalcBtn.addEventListener('click', ()=>{
   const c100 = parseFloat(c100El.value) || 0;
   const f100 = parseFloat(f100El.value) || 0;
@@ -401,6 +421,7 @@ applyCalcBtn.addEventListener('click', ()=>{
 });
 [c100El,f100El,p100El,servingEl].forEach(el=>el.addEventListener('input', ()=>{ const w=parseFloat(servingEl.value)||0; applyCalcBtn.disabled = !(w>0 && (parseFloat(c100El.value)||0)>0); }));
 
+/* Save item: ensure new item is NOT auto-selected */
 saveBtn.addEventListener('click', ()=>{
   const cat = categoryEl.value==='__new__' ? (prompt('Category name:')||'Uncategorized') : categoryEl.value || 'Uncategorized';
   const name = nameEl.value.trim();
@@ -408,10 +429,12 @@ saveBtn.addEventListener('click', ()=>{
   const item = { name, measure: measureEl.value||'', carbs: parseFloat(carbsEl.value)||0, fat: parseFloat(fatEl.value)||0, protein: parseFloat(proteinEl.value)||0, notes: notesEl.value||'' };
   if(editContext){ const {cat:old, idx} = editContext; data[old][idx] = item; if(old !== cat){ if(!data[cat]) data[cat]=[]; data[cat].push(item); data[old].splice(idx,1); if(data[old].length===0) delete data[old]; } }
   else { if(!data[cat]) data[cat]=[]; data[cat].push(item); }
-  saveAll(); modal.classList.remove('active'); render();
+  saveAll();
+  modal.classList.remove('active');
+  render();
 });
 
-/* Edit helper exposed for item actions */
+/* Edit helper */
 function openEdit(cat, idx){
   editContext = {cat, idx};
   document.getElementById('modalTitle').innerText='Edit Food';
@@ -431,19 +454,37 @@ function openEdit(cat, idx){
 window.openEdit = openEdit;
 
 /* Delete helper */
-function deleteItem(cat, idx){ if(!confirm('Delete item?')) return; data[cat].splice(idx,1); if(data[cat].length===0) delete data[cat]; saveAll(); render(); }
+function deleteItem(cat, idx){
+  if(!confirm('Delete item?')) return;
+  const id = `${cat}::${idx}`;
+  data[cat].splice(idx,1);
+  if(data[cat].length===0) delete data[cat];
+  // rebuild selected set to remove invalid ids and adjust indices
+  const newSelected = new Set();
+  selected.forEach(sid=>{
+    const [sc, si] = sid.split('::');
+    if(sc === cat){
+      const i = Number(si);
+      if(i === idx) return; // removed item
+      if(i > idx) newSelected.add(`${sc}::${i-1}`); else newSelected.add(sid);
+    } else newSelected.add(sid);
+  });
+  selected = newSelected;
+  saveAll();
+  render();
+}
 window.deleteItem = deleteItem;
 
 /* OCR worker and preprocessing */
 async function ensureWorker(){
   if(workerReady) return;
   try{
-    if(!ocrWorker) ocrWorker = Tesseract.createWorker({ logger: m => { if(m && typeof m.progress === 'number'){ ocrStatus.style.display='block'; ocrStatus.className='ocr-status'; ocrStatus.innerText='OCR: '+Math.round(m.progress*100)+'%'; } }});
+    if(!ocrWorker) ocrWorker = Tesseract.createWorker({ logger: m => { if(m && typeof m.progress === 'number'){ ocrStatus.style.display='block'; ocrStatus.className='ocr-status active'; ocrStatus.innerText='OCR: '+Math.round(m.progress*100)+'%'; } }});
     await ocrWorker.load(); await ocrWorker.loadLanguage('eng'); await ocrWorker.initialize('eng');
     await ocrWorker.setParameters({ tessedit_char_whitelist:'0123456789.gmper/abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ:-() ', preserve_interword_spaces:'1' });
     workerReady = true;
-    ocrStatus.style.display='block'; ocrStatus.className='ocr-status ocr-success'; ocrStatus.innerText='OCR ready';
-  }catch(e){ console.error('worker init',e); workerReady=false; ocrStatus.style.display='block'; ocrStatus.className='ocr-status ocr-error'; ocrStatus.innerText='OCR engine unavailable'; }
+    ocrStatus.style.display='block'; ocrStatus.className='ocr-status ocr-success active'; ocrStatus.innerText='OCR ready';
+  }catch(e){ console.error('worker init',e); workerReady=false; ocrStatus.style.display='block'; ocrStatus.className='ocr-status ocr-error active'; ocrStatus.innerText='OCR engine unavailable'; }
 }
 
 function preprocessImage(dataUrl, maxWidth=1200){
@@ -469,15 +510,15 @@ function preprocessImage(dataUrl, maxWidth=1200){
 
 async function runOcr(dataUrl){
   try{
-    ocrStatus.style.display='block'; ocrStatus.className='ocr-status'; ocrStatus.innerText='Preparing image...';
+    ocrStatus.style.display='block'; ocrStatus.className='ocr-status active'; ocrStatus.innerText='Preparing image...';
     await ensureWorker();
-    if(!workerReady){ ocrStatus.className='ocr-status ocr-error'; ocrStatus.innerText='OCR engine unavailable'; return; }
+    if(!workerReady){ ocrStatus.className='ocr-status ocr-error active'; ocrStatus.innerText='OCR engine unavailable'; return; }
     const pre = await preprocessImage(dataUrl, 1200);
-    ocrStatus.className='ocr-status'; ocrStatus.innerText='Scanning...';
+    ocrStatus.className='ocr-status active'; ocrStatus.innerText='Scanning...';
     const { data: { text } } = await ocrWorker.recognize(pre);
     ocrStatus.className='ocr-status'; ocrStatus.innerText='OCR complete — parsing';
     parseLabelText(text || '');
-  }catch(e){ console.error('ocr',e); ocrStatus.className='ocr-status ocr-error'; ocrStatus.innerText='OCR failed — try a clearer photo'; }
+  }catch(e){ console.error('ocr',e); ocrStatus.className='ocr-status ocr-error active'; ocrStatus.innerText='OCR failed — try a clearer photo'; }
 }
 
 /* parse label text for per-100g carbs/fat/protein and serving with fallbacks */
@@ -506,7 +547,7 @@ function parseLabelText(text){
     if(allG.length>2 && !p100) p100 = allG[2];
   }
 
-  // fallback: numbers without g (rare) - take first three numbers
+  // fallback: numbers without g - take first three numbers
   if((!c100 || !f100 || !p100) && lower.match(/(\d+\.?\d*)/g)){
     const nums = Array.from(lower.matchAll(/(\d+\.?\d*)/g)).map(m=>m[1]);
     if(nums.length>0 && !c100) c100 = nums[0];
@@ -552,7 +593,7 @@ fileInput.addEventListener('change', async (ev)=>{
   const reader = new FileReader();
   reader.onload = async ()=> {
     cameraPreview.src = reader.result; cameraPreview.style.display='block';
-    ocrStatus.style.display='block'; ocrStatus.className='ocr-status'; ocrStatus.innerText='Processing image...';
+    ocrStatus.style.display='block'; ocrStatus.className='ocr-status active'; ocrStatus.innerText='Processing image...';
     await runOcr(reader.result);
   };
   reader.readAsDataURL(f);
