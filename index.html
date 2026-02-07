@@ -1,1307 +1,727 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#1a472a">
-    <title>Carb Tracker</title>
-    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --primary: #1a472a;
-            --primary-light: #2d6b45;
-            --accent: #5f9767;
-            --bg: #fafbf9;
-            --surface: #ffffff;
-            --text: #2a3b2e;
-            --text-light: #5a6b5e;
-            --border: #dfe6e0;
-            --shadow: rgba(26, 71, 42, 0.08);
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            padding-bottom: 80px;
-            -webkit-font-smoothing: antialiased;
-        }
-
-        .header {
-            background: var(--primary);
-            color: white;
-            padding: 16px 20px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: 0 2px 8px var(--shadow);
-        }
-
-        .header-content {
-            max-width: 600px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        h1 {
-            font-size: 22px;
-            font-weight: 600;
-        }
-
-        .search-container {
-            background: var(--surface);
-            padding: 16px 20px;
-            border-bottom: 1px solid var(--border);
-            position: sticky;
-            top: 64px;
-            z-index: 99;
-        }
-
-        .search-box {
-            max-width: 600px;
-            margin: 0 auto;
-            position: relative;
-        }
-
-        .search-input {
-            width: 100%;
-            padding: 12px 16px 12px 44px;
-            border: 2px solid var(--border);
-            border-radius: 12px;
-            font-size: 16px;
-            background: var(--bg);
-        }
-
-        .search-input:focus {
-            outline: none;
-            border-color: var(--accent);
-        }
-
-        .search-icon {
-            position: absolute;
-            left: 14px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-light);
-        }
-
-        .content {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .category {
-            margin-bottom: 32px;
-        }
-
-        .category-header {
-            background: var(--primary-light);
-            color: white;
-            padding: 12px 16px;
-            border-radius: 10px;
-            margin-bottom: 12px;
-            font-weight: 600;
-            font-size: 16px;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .category-count {
-            background: rgba(255,255,255,0.2);
-            padding: 2px 10px;
-            border-radius: 12px;
-            font-size: 14px;
-        }
-
-        .items {
-            display: grid;
-            gap: 8px;
-        }
-
-        .item {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 14px 16px;
-            display: grid;
-            grid-template-columns: auto 1fr auto auto;
-            gap: 12px;
-            align-items: center;
-        }
-
-        .item.selected {
-            background: #f0f7f2;
-            border-color: var(--accent);
-        }
-
-        .item-checkbox {
-            width: 24px;
-            height: 24px;
-            cursor: pointer;
-            accent-color: var(--accent);
-        }
-
-        .item-name {
-            font-weight: 500;
-            font-size: 15px;
-        }
-
-        .item-details {
-            font-size: 13px;
-            color: var(--text-light);
-            margin-top: 4px;
-        }
-
-        .item-nutrition {
-            display: flex;
-            gap: 8px;
-        }
-
-        .nutrition-badge {
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 16px;
-            text-align: center;
-            min-width: 55px;
-            color: white;
-        }
-
-        .nutrition-label {
-            font-size: 10px;
-            display: block;
-            margin-top: 2px;
-            opacity: 0.9;
-        }
-
-        .item-actions {
-            display: flex;
-            gap: 8px;
-        }
-
-        .item-btn {
-            background: transparent;
-            border: none;
-            font-size: 20px;
-            cursor: pointer;
-            padding: 4px;
-            width: 32px;
-            height: 32px;
-            border-radius: 6px;
-        }
-
-        .edit-btn {
-            color: var(--primary);
-        }
-
-        .delete-btn {
-            color: #c93a3a;
-        }
-
-        .fab {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background: var(--primary);
-            color: white;
-            border: none;
-            font-size: 28px;
-            box-shadow: 0 4px 12px var(--shadow);
-            cursor: pointer;
-            z-index: 101;
-        }
-
-        .meal-total {
-            position: fixed;
-            bottom: 90px;
-            right: 20px;
-            background: var(--primary);
-            color: white;
-            padding: 18px 22px;
-            border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            min-width: 240px;
-            z-index: 100;
-            transform: translateY(150%);
-            transition: transform 0.3s ease, background 0.3s ease;
-            border: 2px solid rgba(255,255,255,0.2);
-        }
-
-        .meal-total.show {
-            transform: translateY(0);
-        }
-
-        .meal-total-header {
-            font-size: 15px;
-            font-weight: 700;
-            margin-bottom: 14px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-        }
-
-        .meal-total-clear {
-            background: rgba(0,0,0,0.3);
-            border: 1px solid rgba(255,255,255,0.3);
-            color: white;
-            padding: 5px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            cursor: pointer;
-            font-weight: 600;
-            text-shadow: 0 1px 1px rgba(0,0,0,0.2);
-        }
-
-        .meal-total-values {
-            display: grid;
-            gap: 10px;
-        }
-
-        .total-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 18px;
-            font-weight: 700;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.3);
-        }
-
-        .total-label {
-            opacity: 1;
-            font-weight: 600;
-        }
-
-        .total-value {
-            font-size: 28px;
-            font-weight: 800;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        }
-
-        .bolus-info {
-            margin-top: 14px;
-            padding-top: 14px;
-            border-top: 2px solid rgba(255,255,255,0.3);
-            font-size: 13px;
-        }
-
-        .bolus-row {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 10px;
-            opacity: 1;
-            font-size: 13px;
-            font-weight: 600;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-        }
-
-        .bolus-highlight {
-            background: rgba(0,0,0,0.25);
-            padding: 10px 14px;
-            border-radius: 8px;
-            text-align: center;
-            font-weight: 700;
-            font-size: 15px;
-            line-height: 1.5;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.3);
-            border: 1px solid rgba(255,255,255,0.2);
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 200;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .modal.active {
-            display: flex;
-        }
-
-        .modal-content {
-            background: var(--surface);
-            border-radius: 16px;
-            padding: 24px;
-            max-width: 500px;
-            width: 100%;
-            max-height: 85vh;
-            overflow-y: auto;
-        }
-
-        .modal-header {
-            font-size: 20px;
-            font-weight: 600;
-            margin-bottom: 20px;
-        }
-
-        .form-group {
-            margin-bottom: 16px;
-        }
-
-        .form-label {
-            display: block;
-            font-size: 14px;
-            font-weight: 500;
-            margin-bottom: 6px;
-        }
-
-        .form-input, .form-select {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid var(--border);
-            border-radius: 8px;
-            font-size: 16px;
-        }
-
-        .form-input:focus, .form-select:focus {
-            outline: none;
-            border-color: var(--accent);
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-
-        .form-actions {
-            display: flex;
-            gap: 12px;
-            margin-top: 24px;
-        }
-
-        .btn {
-            flex: 1;
-            padding: 14px;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-        }
-
-        .btn-secondary {
-            background: var(--border);
-            color: var(--text);
-        }
-
-        .calc-toggle {
-            background: var(--border);
-            border: none;
-            padding: 10px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            cursor: pointer;
-            margin-top: 8px;
-            width: 100%;
-            font-weight: 500;
-        }
-
-        .calculator {
-            background: #f0f7f2;
-            border: 2px solid var(--accent);
-            border-radius: 12px;
-            padding: 16px;
-            margin-top: 12px;
-        }
-
-        .calc-header {
-            font-weight: 600;
-            font-size: 15px;
-            color: var(--primary);
-            margin-bottom: 12px;
-        }
-
-        .calc-result {
-            background: white;
-            border: 2px solid var(--accent);
-            border-radius: 8px;
-            padding: 12px;
-            text-align: center;
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--primary);
-            min-height: 48px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .calc-result.show {
-            background: var(--accent);
-            color: white;
-        }
-
-        .camera-btn {
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 8px;
-        }
-
-        .camera-preview {
-            width: 100%;
-            max-height: 300px;
-            border-radius: 8px;
-            margin-top: 12px;
-            display: none;
-            background: #000;
-        }
-
-        .camera-preview.active {
-            display: block;
-        }
-
-        .ocr-status {
-            background: var(--primary-light);
-            color: white;
-            padding: 10px 12px;
-            border-radius: 8px;
-            margin-top: 12px;
-            font-size: 13px;
-            text-align: center;
-            display: none;
-        }
-
-        .ocr-status.active {
-            display: block;
-        }
-
-        .ocr-status.success {
-            background: var(--accent);
-        }
-
-        .ocr-status.error {
-            background: #c93a3a;
-        }
-
-        .ocr-debug {
-            background: #2a3b2e;
-            color: #5f9767;
-            padding: 12px;
-            border-radius: 8px;
-            margin-top: 12px;
-            font-size: 11px;
-            font-family: monospace;
-            max-height: 200px;
-            overflow-y: auto;
-            display: none;
-            white-space: pre-wrap;
-            word-break: break-all;
-        }
-
-        .ocr-debug.active {
-            display: block;
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: var(--text-light);
-        }
-
-        @media (max-width: 640px) {
-            .meal-total {
-                left: 20px;
-                right: 20px;
-                bottom: 90px;
-            }
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <meta name="theme-color" content="#1a472a" />
+  <title>Carb Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    :root {
+      --primary:#1a472a; --primary-light:#2d6b45; --accent:#5f9767;
+      --bg:#fafbf9; --surface:#ffffff; --text:#2a3b2e; --text-light:#5a6b5e;
+      --border:#dfe6e0; --shadow:rgba(26,71,42,0.08);
+    }
+    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial; background:var(--bg); color:var(--text); padding-bottom:80px; -webkit-font-smoothing:antialiased; }
+    .header { background:var(--primary); color:#fff; padding:16px 20px; position:sticky; top:0; z-index:100; box-shadow:0 2px 8px var(--shadow); }
+    .header-content { max-width:600px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; }
+    h1 { font-size:22px; font-weight:600; }
+    .search-container { background:var(--surface); padding:16px 20px; border-bottom:1px solid var(--border); position:sticky; top:64px; z-index:99; }
+    .search-box { max-width:600px; margin:0 auto; position:relative; }
+    .search-input { width:100%; padding:12px 16px 12px 44px; border:2px solid var(--border); border-radius:12px; font-size:16px; background:var(--bg); }
+    .search-input:focus { outline:none; border-color:var(--accent); }
+    .search-icon { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--text-light); }
+    .content { max-width:600px; margin:0 auto; padding:20px; }
+    .category { margin-bottom:32px; }
+    .category-header { background:var(--primary-light); color:#fff; padding:12px 16px; border-radius:10px; margin-bottom:12px; font-weight:600; font-size:16px; display:flex; justify-content:space-between; }
+    .category-count { background:rgba(255,255,255,0.2); padding:2px 10px; border-radius:12px; font-size:14px; }
+    .items { display:grid; gap:8px; }
+    .item { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; display:grid; grid-template-columns:auto 1fr auto auto; gap:12px; align-items:center; cursor:pointer; }
+    .item.selected { background:#f0f7f2; border-color:var(--accent); }
+    .item-checkbox { width:24px; height:24px; cursor:pointer; accent-color:var(--accent); }
+    .item-name { font-weight:500; font-size:15px; }
+    .item-details { font-size:13px; color:var(--text-light); margin-top:4px; }
+    .item-nutrition { display:flex; gap:8px; align-items:center; }
+    .nutrition-badge { padding:6px 12px; border-radius:8px; font-weight:700; font-size:16px; text-align:center; min-width:55px; color:#fff; }
+    .carbs-badge { background:var(--accent); }
+    .fat-badge { background:#f59e42; }
+    .nutrition-label { font-size:10px; display:block; margin-top:2px; opacity:0.9; }
+    .item-actions { display:flex; gap:8px; }
+    .item-btn { background:transparent; border:none; font-size:20px; cursor:pointer; padding:4px; width:32px; height:32px; border-radius:6px; }
+    .edit-btn { color:var(--primary); }
+    .delete-btn { color:#c93a3a; }
+    .fab { position:fixed; bottom:20px; right:20px; width:56px; height:56px; border-radius:50%; background:var(--primary); color:#fff; border:none; font-size:28px; box-shadow:0 4px 12px var(--shadow); cursor:pointer; z-index:101; }
+    .meal-total { position:fixed; bottom:90px; right:20px; background:var(--primary); color:#fff; padding:18px 22px; border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.3); min-width:240px; z-index:100; transform:translateY(150%); transition:transform .3s ease; border:2px solid rgba(255,255,255,0.2); }
+    .meal-total.show { transform:translateY(0); }
+    .meal-total-header { font-size:15px; font-weight:700; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; text-shadow:0 1px 2px rgba(0,0,0,0.2); }
+    .meal-total-clear { background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.3); color:#fff; padding:5px 12px; border-radius:6px; font-size:12px; cursor:pointer; font-weight:600; text-shadow:0 1px 1px rgba(0,0,0,0.2); }
+    .meal-total-values { display:grid; gap:10px; }
+    .total-row { display:flex; justify-content:space-between; align-items:center; font-size:18px; font-weight:700; text-shadow:0 1px 3px rgba(0,0,0,0.3); }
+    .total-label { opacity:1; font-weight:600; }
+    .total-value { font-size:28px; font-weight:800; text-shadow:0 2px 4px rgba(0,0,0,0.3); }
+    .bolus-info { margin-top:14px; padding-top:14px; border-top:2px solid rgba(255,255,255,0.3); font-size:13px; }
+    .bolus-row { display:flex; justify-content:space-between; margin-top:10px; opacity:1; font-size:13px; font-weight:600; text-shadow:0 1px 2px rgba(0,0,0,0.2); }
+    .bolus-highlight { background:rgba(0,0,0,0.25); padding:10px 14px; border-radius:8px; text-align:center; font-weight:700; font-size:15px; line-height:1.5; text-shadow:0 1px 3px rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); }
+    .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; align-items:center; justify-content:center; padding:20px; }
+    .modal.active { display:flex; }
+    .modal-content { background:var(--surface); border-radius:16px; padding:24px; max-width:500px; width:100%; max-height:80vh; overflow-y:auto; }
+    .modal-header { font-size:20px; font-weight:600; margin-bottom:20px; }
+    .form-group { margin-bottom:16px; }
+    .form-label { display:block; font-size:14px; font-weight:500; margin-bottom:6px; }
+    .form-input, .form-select { width:100%; padding:12px; border:2px solid var(--border); border-radius:8px; font-size:16px; }
+    .form-input:focus, .form-select:focus { outline:none; border-color:var(--accent); }
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .form-actions { display:flex; gap:12px; margin-top:24px; }
+    .btn { flex:1; padding:14px; border:none; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer; }
+    .btn-primary { background:var(--primary); color:#fff; }
+    .btn-secondary { background:var(--border); color:var(--text); }
+    .calc-toggle { background:var(--border); border:none; padding:10px 16px; border-radius:8px; font-size:14px; cursor:pointer; margin-top:8px; width:100%; font-weight:500; }
+    .calculator { background:#f0f7f2; border:2px solid var(--accent); border-radius:12px; padding:16px; margin-top:12px; }
+    .calc-header { font-weight:600; font-size:15px; color:var(--primary); margin-bottom:12px; }
+    .calc-result { background:white; border:2px solid var(--accent); border-radius:8px; padding:12px; text-align:center; font-size:16px; font-weight:600; color:var(--primary); min-height:48px; display:flex; align-items:center; justify-content:center; }
+    .calc-result.show { background:var(--accent); color:#fff; }
+    .camera-btn { background:var(--accent); color:#fff; border:none; padding:12px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; width:100%; margin-top:8px; }
+    .camera-preview { width:100%; max-height:300px; border-radius:8px; margin-top:12px; display:none; object-fit:cover; }
+    .camera-preview.active { display:block; }
+    .ocr-status { background:var(--primary-light); color:#fff; padding:10px 12px; border-radius:8px; margin-top:12px; font-size:13px; text-align:center; display:none; }
+    .ocr-status.active { display:block; }
+    .ocr-status.success { background:var(--accent); color:#fff; }
+    .ocr-status.error { background:#c93a3a; color:#fff; }
+    .hidden { display:none !important; }
+    .empty-state { text-align:center; padding:60px 20px; color:var(--text-light); }
+    @media (max-width:640px){ .meal-total { left:20px; right:20px; bottom:90px; } }
+  </style>
 </head>
 <body>
-    <div class="header">
-        <div class="header-content">
-            <h1>🥖 Carb Tracker</h1>
-            <span id="itemCount">0 items</span>
-        </div>
+  <div class="header">
+    <div class="header-content">
+      <h1>🥖 Carb Tracker</h1>
+      <span id="itemCount">0 items</span>
     </div>
+  </div>
 
-    <div class="search-container">
-        <div class="search-box">
-            <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="11" cy="11" r="8"></circle>
-                <path d="m21 21-4.35-4.35"></path>
-            </svg>
-            <input type="text" class="search-input" id="searchInput" placeholder="Search foods...">
-        </div>
+  <div class="search-container">
+    <div class="search-box">
+      <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"></circle>
+        <path d="m21 21-4.35-4.35"></path>
+      </svg>
+      <input type="text" class="search-input" id="searchInput" placeholder="Search foods..." />
     </div>
+  </div>
 
-    <div class="content" id="content"></div>
+  <div class="content" id="content"></div>
 
-    <button class="fab" id="addButton">+</button>
+  <button class="fab" id="addButton">+</button>
 
-    <div class="meal-total" id="mealTotal">
-        <div class="meal-total-header">
-            <span>Meal Total</span>
-            <button class="meal-total-clear" onclick="clearMealSelection()">Clear</button>
+  <div class="meal-total" id="mealTotal">
+    <div class="meal-total-header">
+      <span>Meal Total</span>
+      <button class="meal-total-clear" id="clearMealBtn">Clear</button>
+    </div>
+    <div class="meal-total-values">
+      <div class="total-row">
+        <span class="total-label">Carbs:</span>
+        <span class="total-value" id="totalCarbs">0g</span>
+      </div>
+    </div>
+    <div class="bolus-info" id="bolusInfo" style="display:none;">
+      <div class="bolus-highlight" id="bolusRecommendation"></div>
+      <div class="bolus-row">
+        <span>Fat: <strong id="totalFat">0g</strong></span>
+        <span>Ratio: <strong id="fatRatio">-</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="addModal">
+    <div class="modal-content">
+      <div class="modal-header" id="modalTitle">Add New Food</div>
+      <form id="addForm">
+        <div class="form-group">
+          <button type="button" class="camera-btn" id="takePhotoBtn">📸 Take Sharp Photo of Label</button>
+          <input type="file" id="nativeCamera" accept="image/*" capture="environment" style="display:none" />
+          <img id="cameraPreview" class="camera-preview" alt="Preview" />
+          <div id="ocrStatus" class="ocr-status" style="display:block; margin-top:10px; font-weight:bold; text-align:center; min-height:20px; white-space:pre-wrap; color:var(--primary);"></div>
         </div>
-        <div class="meal-total-values">
-            <div class="total-row">
-                <span class="total-label">Carbs:</span>
-                <span class="total-value" id="totalCarbs">0g</span>
+
+        <button type="button" class="calc-toggle" id="calcToggle">🧮 Use Calculator (from 100g label)</button>
+
+        <div id="calculator" class="calculator hidden">
+          <div class="calc-header">100g Label Details:</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Carbs/100g</label>
+              <input type="number" step="0.1" class="form-input" id="carbsPer100g" placeholder="0" />
             </div>
-        </div>
-        <div class="bolus-info" id="bolusInfo" style="display: none;">
-            <div class="bolus-highlight" id="bolusRecommendation"></div>
-            <div class="bolus-row">
-                <span>Fat: <strong id="totalFat">0g</strong></span>
-                <span>Ratio: <strong id="fatRatio">-</strong></span>
+            <div class="form-group">
+              <label class="form-label">Fat/100g</label>
+              <input type="number" step="0.1" class="form-input" id="fatPer100g" placeholder="0" />
             </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Your Serving Weight (g)</label>
+            <input type="number" class="form-input" id="servingWeight" placeholder="e.g. 50" />
+          </div>
+          <div id="calcResult" class="calc-result"></div>
+          <button type="button" id="applyCalc" class="camera-btn" style="background:var(--primary); margin-top:10px;" disabled>Apply Values</button>
         </div>
-    </div>
 
-    <div class="modal" id="addModal">
-        <div class="modal-content">
-            <div class="modal-header" id="modalTitle">Add New Food</div>
-            <form id="addForm">
-                <input type="hidden" id="editCategory">
-                <input type="hidden" id="editIndex">
-                
-                <div class="form-group">
-                    <label class="form-label">Category</label>
-                    <select class="form-select" id="categorySelect" required>
-                        <option value="">Select category...</option>
-                        <option value="Cereal/Breakfasts">Cereal/Breakfasts</option>
-                        <option value="Biscuits/Cakes">Biscuits/Cakes</option>
-                        <option value="Dinners">Dinners</option>
-                        <option value="Desserts">Desserts</option>
-                        <option value="Veges/Rice">Veges/Rice</option>
-                        <option value="Crackers">Crackers</option>
-                        <option value="Lollies/Misc">Lollies/Misc</option>
-                        <option value="Custom">+ New Category</option>
-                    </select>
-                </div>
-                
-                <div class="form-group hidden" id="customCategoryGroup">
-                    <label class="form-label">New Category Name</label>
-                    <input type="text" class="form-input" id="customCategory">
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Food Name</label>
-                    <input type="text" class="form-input" id="foodName" required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Measure (e.g., 1/2C, 100g)</label>
-                    <input type="text" class="form-input" id="measure" required>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Carbs (g)</label>
-                        <input type="number" step="0.1" class="form-input" id="carbs" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Fat (g)</label>
-                        <input type="number" step="0.1" class="form-input" id="fat" required>
-                    </div>
-                </div>
-                
-                <button type="button" class="camera-btn" id="scanLabel">📷 Scan Nutrition Label</button>
-                <video id="cameraPreview" class="camera-preview" autoplay playsinline></video>
-                <canvas id="cameraCanvas" style="display:none;"></canvas>
-                <div id="ocrStatus" class="ocr-status"></div>
-                <div id="ocrDebug" class="ocr-debug"></div>
-                
-                <button type="button" class="calc-toggle" id="calcToggle">🧮 Use Calculator (from 100g label)</button>
-                
-                <div class="calculator hidden" id="calculator">
-                    <div class="calc-header">Nutrition Label Calculator</div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Carbs per 100g</label>
-                            <input type="number" step="0.1" class="form-input" id="carbsPer100g">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Fat per 100g</label>
-                            <input type="number" step="0.1" class="form-input" id="fatPer100g">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Actual serving weight (g)</label>
-                        <input type="number" step="0.1" class="form-input" id="servingWeight">
-                    </div>
-                    <div class="calc-result" id="calcResult"></div>
-                    <button type="button" class="btn btn-primary" id="applyCalc" style="width: 100%; margin-top: 8px;">Apply Values</button>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Notes (optional)</label>
-                    <input type="text" class="form-input" id="notes">
-                </div>
-                
-                <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" id="cancelButton">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="submitButton">Add Food</button>
-                </div>
-            </form>
+        <div class="form-group" style="margin-top:20px;">
+          <label class="form-label">Category</label>
+          <select class="form-select" id="categorySelect">
+            <option value="Cereal/Breakfasts">Cereal/Breakfasts</option>
+            <option value="Biscuits/Cakes">Biscuits/Cakes</option>
+            <option value="Dinners">Dinners</option>
+            <option value="Desserts">Desserts</option>
+            <option value="Veges/Rice">Veges/Rice</option>
+            <option value="Crackers">Crackers</option>
+            <option value="Lollies/Misc">Lollies/Misc</option>
+            <option value="Custom">+ Add New Category...</option>
+          </select>
         </div>
+
+        <div id="customCategoryGroup" class="form-group hidden">
+          <label class="form-label">New Category Name</label>
+          <input type="text" class="form-input" id="customCategory" placeholder="Enter category name" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Food Name</label>
+          <input type="text" class="form-input" id="foodName" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Measure (e.g. 1 cup, 2 biscuits)</label>
+          <input type="text" class="form-input" id="measure" required />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Carbs (g)</label>
+            <input type="number" step="0.1" class="form-input" id="carbs" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fat (g)</label>
+            <input type="number" step="0.1" class="form-input" id="fat" required />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Notes (optional)</label>
+          <input type="text" class="form-input" id="notes" />
+        </div>
+
+        <input type="hidden" id="editCategory" />
+        <input type="hidden" id="editIndex" />
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" id="cancelButton">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="submitButton">Add Food</button>
+        </div>
+      </form>
     </div>
+  </div>
 
-    <script>
-        const initialData = {
-            "Cereal/Breakfasts": [
-                { name: "Lighter Tasty Apricot Nuts & Seeds Muesli", measure: "1/2C", carbs: 21, fat: 6, notes: "Includes milk, sugar, 2 drinks" },
-                { name: "Harraways Scotch Oats", measure: "1/2C x 72", carbs: 34, fat: 4, notes: "" },
-                { name: "Special K", measure: "1/4C 0.58", carbs: 34, fat: 0.5, notes: "" },
-                { name: "Nutrigrain", measure: "25g", carbs: 27, fat: 1, notes: "Approx" },
-                { name: "Fruitybix Berry", measure: "Heaped 1/2C", carbs: 28, fat: 2, notes: "Includes maple syrup, milk, sugar, 2 drinks" },
-                { name: "Maple Syrup", measure: "60g", carbs: 10, fat: 0, notes: "" },
-                { name: "Milk", measure: "1 Dsp 100mls", carbs: 47, fat: 3.5, notes: "Cereal & drinks" },
-                { name: "Sugar", measure: "1/2tsp", carbs: 4, fat: 0, notes: "" },
-                { name: "Baked Beans", measure: "100g", carbs: 2, fat: 0.5, notes: "" },
-                { name: "Toast - White Bread", measure: "1 slice", carbs: 16.4, fat: 1.5, notes: "" },
-                { name: "Sweetcorn Fritters", measure: "2 medium", carbs: 13.8, fat: 8, notes: "" },
-                { name: "Spaghetti", measure: "100g", carbs: 15.2, fat: 0.5, notes: "" },
-                { name: "Golden Syrup", measure: "1/4tsp", carbs: 13, fat: 0, notes: "" },
-                { name: "Just Right", measure: "1/2C", carbs: 17, fat: 0.5, notes: "" },
-                { name: "Waffle - Homemade", measure: "1/2", carbs: 23, fat: 6, notes: "" },
-                { name: "Pumpkin Soup - Tinned", measure: "70g", carbs: 30, fat: 2, notes: "" },
-                { name: "Pumpkin Soup - Homemade", measure: "can", carbs: 16, fat: 3, notes: "" },
-                { name: "Pancakes", measure: "1", carbs: 52, fat: 8, notes: "" },
-                { name: "Low FODMAP Muesli", measure: "1/2C", carbs: 25, fat: 5, notes: "" },
-                { name: "Tinned Breakfast", measure: "100g", carbs: 16, fat: 8, notes: "" },
-                { name: "Raglan Apricot Yoghurt", measure: "100g", carbs: 35, fat: 3, notes: "Includes sugar in drink" }
-            ],
-            "Biscuits/Cakes": [
-                { name: "Muffin (regular)", measure: "100g 0.54x", carbs: 47.5, fat: 15, notes: "" },
-                { name: "Chocolate Biscuit", measure: "3", carbs: 10, fat: 4, notes: "" },
-                { name: "Shrewsbury", measure: "2", carbs: 15, fat: 6, notes: "" },
-                { name: "Scone", measure: "4", carbs: 15, fat: 3, notes: "" },
-                { name: "Chippie", measure: "3", carbs: 12, fat: 5, notes: "" },
-                { name: "Jaffa Thins", measure: "1", carbs: 36, fat: 8, notes: "" },
-                { name: "Lemon Treat", measure: "2", carbs: 10.8, fat: 4, notes: "" },
-                { name: "Ginger Biscuit", measure: "1", carbs: 42.5, fat: 3, notes: "" },
-                { name: "Krispies", measure: "2", carbs: 13.5, fat: 5, notes: "" },
-                { name: "Kisses", measure: "2", carbs: 13.7, fat: 6, notes: "" },
-                { name: "Apricot Danish (Bakers Delight)", measure: "1", carbs: 25, fat: 12, notes: "" },
-                { name: "Blueberry Danish (Bakers Delight)", measure: "1", carbs: 30.5, fat: 14, notes: "" },
-                { name: "Chocolate Coated Macaroon", measure: "1", carbs: 11, fat: 5, notes: "" },
-                { name: "Wholemeal Round Bread Roll", measure: "1", carbs: 11, fat: 2, notes: "" },
-                { name: "Vogels Toast", measure: "1 slice", carbs: 18, fat: 2.5, notes: "" },
-                { name: "Donut Mini (Edmonds)", measure: "1", carbs: 18, fat: 8, notes: "" },
-                { name: "Animal Biscuits", measure: "5", carbs: 5, fat: 2, notes: "" }
-            ],
-            "Dinners": [
-                { name: "Buttermilk Chicken Tenderloins", measure: "2", carbs: 34, fat: 12, notes: "" },
-                { name: "Beer Battered Prawns", measure: "5/6", carbs: 60, fat: 15, notes: "" },
-                { name: "Chicken Kiev", measure: "1", carbs: 40, fat: 20, notes: "" },
-                { name: "Fish Fillets", measure: "200g", carbs: 90, fat: 8, notes: "" },
-                { name: "Fish Cakes", measure: "59g corn", carbs: 60, fat: 10, notes: "" },
-                { name: "Steak Fried Rice", measure: "2", carbs: 26, fat: 8, notes: "" },
-                { name: "Steak Soft Noodles", measure: "375g", carbs: 30, fat: 6, notes: "" },
-                { name: "Chicken tips", measure: "250g", carbs: 30, fat: 12, notes: "" },
-                { name: "Lasagne", measure: "350g", carbs: 22, fat: 15, notes: "" },
-                { name: "Risotto (Del Sette Sol)", measure: "250g", carbs: 40.6, fat: 8, notes: "" },
-                { name: "Big Ben Steak & Cheese Pie", measure: "1", carbs: 13, fat: 18, notes: "" },
-                { name: "2 Minute Noodles", measure: "1 pkt", carbs: 55, fat: 20, notes: "" },
-                { name: "Macaroni Cheese", measure: "250g", carbs: 50, fat: 15, notes: "" },
-                { name: "Cheese Sauce", measure: "1c", carbs: 20, fat: 12, notes: "" },
-                { name: "Beef Nachos", measure: "1c", carbs: 13, fat: 10, notes: "" }
-            ],
-            "Desserts": [
-                { name: "Apple Pies", measure: "52g", carbs: 19, fat: 8, notes: "" },
-                { name: "Peach Pottles", measure: "100g", carbs: 42, fat: 1, notes: "" },
-                { name: "Tropical Fruit Salad", measure: "1/2C", carbs: 19.2, fat: 0.5, notes: "" },
-                { name: "Icey Slicey", measure: "145g", carbs: 7, fat: 0, notes: "" },
-                { name: "Jelly", measure: "100g", carbs: 7, fat: 0, notes: "" }
-            ],
-            "Veges/Rice": [
-                { name: "Basmati Rice (cooked)", measure: "120 1/2C", carbs: 30, fat: 0.5, notes: "" },
-                { name: "Brown Rice (uncooked)", measure: "1/2C", carbs: 36, fat: 1.5, notes: "" },
-                { name: "Cous Cous", measure: "150g", carbs: 23, fat: 0.5, notes: "" },
-                { name: "Baby Potatoes", measure: "200g (approx 2.5)", carbs: 36, fat: 0, notes: "" },
-                { name: "Mashed Potato", measure: "100g", carbs: 10.3, fat: 4, notes: "" },
-                { name: "Mashed Kumara", measure: "1/2C", carbs: 10, fat: 0, notes: "" },
-                { name: "Mixed Veges", measure: "75g", carbs: 10, fat: 0, notes: "" },
-                { name: "Beans/Carrots", measure: "100g", carbs: 10, fat: 0, notes: "" },
-                { name: "Peas", measure: "100g", carbs: 27, fat: 0.5, notes: "" }
-            ],
-            "Crackers": [
-                { name: "Sesame Wheat", measure: "3", carbs: 13, fat: 3, notes: "" },
-                { name: "Hazelnut Somerset", measure: "4", carbs: 4, fat: 2, notes: "" },
-                { name: "Peckish", measure: "3", carbs: 15, fat: 6, notes: "" },
-                { name: "Snax", measure: "4", carbs: 15.7, fat: 7, notes: "" },
-                { name: "Salada", measure: "4", carbs: 18.4, fat: 3, notes: "" },
-                { name: "Vogels Cruskits", measure: "5", carbs: 11.7, fat: 2, notes: "" },
-                { name: "5 Seed One Square", measure: "3", carbs: 11.6, fat: 3.5, notes: "" }
-            ],
-            "Lollies/Misc": [
-                { name: "Fruit Bursts", measure: "4", carbs: 23, fat: 0, notes: "" },
-                { name: "Marshmallows", measure: "50ml", carbs: 22, fat: 0, notes: "" },
-                { name: "Eskimo/Explorer", measure: "1/2C", carbs: 20, fat: 8, notes: "" },
-                { name: "Panko Crumbs", measure: "30g", carbs: 25, fat: 1, notes: "" },
-                { name: "Onion Dip", measure: "3 tbsp", carbs: 2, fat: 15, notes: "" },
-                { name: "Jet Planes", measure: "1", carbs: 21, fat: 0, notes: "" }
-            ]
+  <script>
+    // Data and state
+    const initialData = {
+      "Cereal/Breakfasts": [
+        { name: "Lighter Tasty Apricot Nuts & Seeds Muesli", measure: "1/2C", carbs: 21, fat: 6, notes: "Includes milk, sugar, 2 drinks" },
+        { name: "Harraways Scotch Oats", measure: "1/2C x 72", carbs: 34, fat: 4, notes: "" },
+        { name: "Special K", measure: "1/4C 0.58", carbs: 34, fat: 0.5, notes: "" },
+        { name: "Nutrigrain", measure: "25g", carbs: 27, fat: 1, notes: "Approx" },
+        { name: "Fruitybix Berry", measure: "Heaped 1/2C", carbs: 28, fat: 2, notes: "Includes maple syrup, milk, sugar, 2 drinks" },
+        { name: "Maple Syrup", measure: "60g", carbs: 10, fat: 0, notes: "" },
+        { name: "Milk", measure: "1 Dsp 100mls", carbs: 4.7, fat: 3.5, notes: "Cereal & drinks" },
+        { name: "Sugar", measure: "1/2tsp", carbs: 4, fat: 0, notes: "" },
+        { name: "Baked Beans", measure: "100g", carbs: 2, fat: 0.5, notes: "" },
+        { name: "Toast - White Bread", measure: "1 slice", carbs: 16.4, fat: 1.5, notes: "" },
+        { name: "Sweetcorn Fritters", measure: "2 medium", carbs: 13.8, fat: 8, notes: "" },
+        { name: "Spaghetti", measure: "100g", carbs: 15.2, fat: 0.5, notes: "" },
+        { name: "Golden Syrup", measure: "1/4tsp", carbs: 13, fat: 0, notes: "" },
+        { name: "Just Right", measure: "1/2C", carbs: 17, fat: 0.5, notes: "" },
+        { name: "Waffle - Homemade", measure: "1/2", carbs: 23, fat: 6, notes: "" },
+        { name: "Pumpkin Soup - Tinned", measure: "70g", carbs: 30, fat: 2, notes: "" },
+        { name: "Pumpkin Soup - Homemade", measure: "can", carbs: 16, fat: 3, notes: "" },
+        { name: "Pancakes", measure: "1", carbs: 52, fat: 8, notes: "" },
+        { name: "Low FODMAP Muesli", measure: "1/2C", carbs: 25, fat: 5, notes: "" },
+        { name: "Tinned Breakfast", measure: "100g", carbs: 16, fat: 8, notes: "" },
+        { name: "Raglan Apricot Yoghurt", measure: "100g", carbs: 35, fat: 3, notes: "Includes sugar in drink" }
+      ],
+      "Biscuits/Cakes": [
+        { name: "Muffin (regular)", measure: "100g 0.54x", carbs: 47.5, fat: 15, notes: "" },
+        { name: "Chocolate Biscuit", measure: "3", carbs: 10, fat: 4, notes: "" },
+        { name: "Shrewsbury", measure: "2", carbs: 15, fat: 6, notes: "" },
+        { name: "Scone", measure: "4", carbs: 15, fat: 3, notes: "" },
+        { name: "Chippie", measure: "3", carbs: 12, fat: 5, notes: "" },
+        { name: "Jaffa Thins", measure: "1", carbs: 36, fat: 8, notes: "" },
+        { name: "Lemon Treat", measure: "2", carbs: 10.8, fat: 4, notes: "" },
+        { name: "Ginger Biscuit", measure: "1", carbs: 42.5, fat: 3, notes: "" },
+        { name: "Krispies", measure: "2", carbs: 13.5, fat: 5, notes: "" },
+        { name: "Kisses", measure: "2", carbs: 13.7, fat: 6, notes: "" },
+        { name: "Apricot Danish (Bakers Delight)", measure: "1", carbs: 25, fat: 12, notes: "" },
+        { name: "Blueberry Danish (Bakers Delight)", measure: "1", carbs: 30.5, fat: 14, notes: "" },
+        { name: "Chocolate Coated Macaroon", measure: "1", carbs: 11, fat: 5, notes: "" },
+        { name: "Wholemeal Round Bread Roll", measure: "1", carbs: 11, fat: 2, notes: "" },
+        { name: "Vogels Toast", measure: "1 slice", carbs: 18, fat: 2.5, notes: "" },
+        { name: "Donut Mini (Edmonds)", measure: "1", carbs: 18, fat: 8, notes: "" },
+        { name: "Animal Biscuits", measure: "5", carbs: 5, fat: 2, notes: "" }
+      ],
+      "Dinners": [
+        { name: "Buttermilk Chicken Tenderloins", measure: "2", carbs: 34, fat: 12, notes: "" },
+        { name: "Beer Battered Prawns", measure: "5/6", carbs: 60, fat: 15, notes: "" },
+        { name: "Chicken Kiev", measure: "1", carbs: 40, fat: 20, notes: "" },
+        { name: "Fish Fillets", measure: "200g", carbs: 90, fat: 8, notes: "" },
+        { name: "Fish Cakes", measure: "59g corn", carbs: 60, fat: 10, notes: "" },
+        { name: "Steak Fried Rice", measure: "2", carbs: 26, fat: 8, notes: "" },
+        { name: "Steak Soft Noodles", measure: "375g", carbs: 30, fat: 6, notes: "" },
+        { name: "Chicken tips", measure: "250g", carbs: 30, fat: 12, notes: "" },
+        { name: "Lasagne", measure: "350g", carbs: 22, fat: 15, notes: "" },
+        { name: "Risotto (Del Sette Sol)", measure: "250g", carbs: 40.6, fat: 8, notes: "" },
+        { name: "Big Ben Steak & Cheese Pie", measure: "1", carbs: 13, fat: 18, notes: "" },
+        { name: "2 Minute Noodles", measure: "1 pkt", carbs: 55, fat: 20, notes: "" },
+        { name: "Macaroni Cheese", measure: "250g", carbs: 50, fat: 15, notes: "" },
+        { name: "Cheese Sauce", measure: "1c", carbs: 20, fat: 12, notes: "" },
+        { name: "Beef Nachos", measure: "1c", carbs: 13, fat: 10, notes: "" }
+      ],
+      "Desserts": [
+        { name: "Apple Pies", measure: "52g", carbs: 19, fat: 8, notes: "" },
+        { name: "Peach Pottles", measure: "100g", carbs: 42, fat: 1, notes: "" },
+        { name: "Tropical Fruit Salad", measure: "1/2C", carbs: 19.2, fat: 0.5, notes: "" },
+        { name: "Icey Slicey", measure: "145g", carbs: 7, fat: 0, notes: "" },
+        { name: "Jelly", measure: "100g", carbs: 7, fat: 0, notes: "" }
+      ],
+      "Veges/Rice": [
+        { name: "Basmati Rice (cooked)", measure: "120 1/2C", carbs: 30, fat: 0.5, notes: "" },
+        { name: "Brown Rice (uncooked)", measure: "1/2C", carbs: 36, fat: 1.5, notes: "" },
+        { name: "Cous Cous", measure: "150g", carbs: 23, fat: 0.5, notes: "" },
+        { name: "Baby Potatoes", measure: "200g (approx 2.5)", carbs: 36, fat: 0, notes: "" },
+        { name: "Mashed Potato", measure: "100g", carbs: 10.3, fat: 4, notes: "" },
+        { name: "Mashed Kumara", measure: "1/2C", carbs: 10, fat: 0, notes: "" },
+        { name: "Mixed Veges", measure: "75g", carbs: 10, fat: 0, notes: "" },
+        { name: "Beans/Carrots", measure: "100g", carbs: 10, fat: 0, notes: "" },
+        { name: "Peas", measure: "100g", carbs: 27, fat: 0.5, notes: "" }
+      ],
+      "Crackers": [
+        { name: "Sesame Wheat", measure: "3", carbs: 13, fat: 3, notes: "" },
+        { name: "Hazelnut Somerset", measure: "4", carbs: 4, fat: 2, notes: "" },
+        { name: "Peckish", measure: "3", carbs: 15, fat: 6, notes: "" },
+        { name: "Snax", measure: "4", carbs: 15.7, fat: 7, notes: "" },
+        { name: "Salada", measure: "4", carbs: 18.4, fat: 3, notes: "" },
+        { name: "Vogels Cruskits", measure: "5", carbs: 11.7, fat: 2, notes: "" },
+        { name: "5 Seed One Square", measure: "3", carbs: 11.6, fat: 3.5, notes: "" }
+      ],
+      "Lollies/Misc": [
+        { name: "Fruit Bursts", measure: "4", carbs: 23, fat: 0, notes: "" },
+        { name: "Marshmallows", measure: "50ml", carbs: 22, fat: 0, notes: "" },
+        { name: "Eskimo/Explorer", measure: "1/2C", carbs: 20, fat: 8, notes: "" },
+        { name: "Panko Crumbs", measure: "30g", carbs: 25, fat: 1, notes: "" },
+        { name: "Onion Dip", measure: "3 tbsp", carbs: 2, fat: 15, notes: "" },
+        { name: "Jet Planes", measure: "1", carbs: 21, fat: 0, notes: "" }
+      ]
+    };
+
+    let allData = {};
+    let selectedItems = new Set();
+    let cameraStream = null;
+    let ocrWorker = null;
+    let workerReady = false;
+
+    // Utilities
+    function safeParse(key, fallback) {
+      try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { console.error('parse error', e); return fallback; }
+    }
+
+    function saveData() { try { localStorage.setItem('carbData', JSON.stringify(allData)); } catch(e){ console.error('save error', e); } }
+    function loadData() {
+      const saved = safeParse('carbData', null);
+      if (saved && typeof saved === 'object') allData = saved; else { allData = initialData; saveData(); }
+    }
+
+    function getFatRatioColor(carbs, fat) {
+      const ratio = carbs > 0 ? (fat / carbs) : 0;
+      if (ratio < 0.3) return '#5f9767';
+      if (ratio < 0.5) return '#e8a647';
+      if (ratio < 0.8) return '#e87d47';
+      return '#d95d47';
+    }
+
+    // Render
+    function renderData(searchTerm = '') {
+      const content = document.getElementById('content');
+      const lowerSearch = (searchTerm || '').toLowerCase();
+      let totalItems = 0;
+      let html = '';
+
+      const categories = Object.keys(allData).sort();
+      if (categories.length === 0) {
+        content.innerHTML = `<div class="empty-state">No foods available. Add a food to get started.</div>`;
+        document.getElementById('itemCount').innerText = '0 items';
+        return;
+      }
+
+      categories.forEach(category => {
+        const items = (allData[category] || []).filter(item =>
+          (item.name || '').toLowerCase().includes(lowerSearch) ||
+          (item.measure || '').toLowerCase().includes(lowerSearch) ||
+          (item.notes || '').toLowerCase().includes(lowerSearch)
+        );
+
+        if (items.length > 0) {
+          totalItems += items.length;
+          html += `<div class="category"><div class="category-header"><span>${escapeHtml(category)}</span><span class="category-count">${items.length}</span></div><div class="items">`;
+
+          items.forEach((item, idx) => {
+            const actualIndex = allData[category].indexOf(item);
+            const itemId = `${category}::${actualIndex}`;
+            const isSelected = selectedItems.has(itemId);
+            const carbs = Number(item.carbs || 0);
+            const fat = Number(item.fat || 0);
+            html += `<div class="item ${isSelected ? 'selected' : ''}" id="item-${encodeId(itemId)}" onclick="toggleItemSelection('${escapeJs(category)}', ${actualIndex})">`;
+            html += `<input type="checkbox" class="item-checkbox" ${isSelected ? 'checked' : ''} onchange="toggleItemSelection('${escapeJs(category)}', ${actualIndex})" onclick="event.stopPropagation()" />`;
+            html += `<div><div class="item-name">${escapeHtml(item.name)}</div><div class="item-details">${escapeHtml(item.measure)}${item.notes ? ' · ' + escapeHtml(item.notes) : ''}</div></div>`;
+            html += `<div class="item-nutrition"><div><div class="nutrition-badge carbs-badge">${carbs}<span class="nutrition-label">Carbs</span></div></div><div><div class="nutrition-badge fat-badge">${fat}<span class="nutrition-label">Fat</span></div></div></div>`;
+            html += `<div class="item-actions"><button class="item-btn edit-btn" onclick="event.stopPropagation(); editItem('${escapeJs(category)}', ${actualIndex})" title="Edit">✎</button><button class="item-btn delete-btn" onclick="event.stopPropagation(); deleteItem('${escapeJs(category)}', ${actualIndex})" title="Delete">🗑</button></div>`;
+            html += `</div>`;
+          });
+
+          html += `</div></div>`;
+        }
+      });
+
+      content.innerHTML = html;
+      document.getElementById('itemCount').innerText = `${totalItems} items`;
+      updateMealPanel();
+    }
+
+    function encodeId(id) { return btoa(unescape(encodeURIComponent(id))).replace(/=/g,''); }
+    function escapeHtml(s) { return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+    function escapeJs(s) { return String(s || '').replace(/'/g, "\\'").replace(/"/g, '\\"'); }
+
+    // Selection
+    function toggleItemSelection(category, index) {
+      const id = `${category}::${index}`;
+      if (selectedItems.has(id)) selectedItems.delete(id); else selectedItems.add(id);
+      renderData(document.getElementById('searchInput').value || '');
+      updateMealPanel();
+    }
+
+    function clearMealSelection() {
+      selectedItems.clear();
+      renderData(document.getElementById('searchInput').value || '');
+      updateMealPanel();
+    }
+
+    function updateMealPanel() {
+      const mealTotalEl = document.getElementById('mealTotal');
+      if (selectedItems.size === 0) {
+        mealTotalEl.classList.remove('show');
+        document.getElementById('bolusInfo').style.display = 'none';
+        document.getElementById('totalCarbs').innerText = '0g';
+        document.getElementById('totalFat').innerText = '0g';
+        document.getElementById('fatRatio').innerText = '-';
+        document.getElementById('bolusRecommendation').innerText = '';
+        return;
+      }
+
+      let tc = 0, tf = 0;
+      selectedItems.forEach(id => {
+        const [cat, idx] = id.split('::');
+        const item = (allData[cat] || [])[Number(idx)];
+        if (item) { tc += Number(item.carbs || 0); tf += Number(item.fat || 0); }
+      });
+
+      document.getElementById('totalCarbs').innerText = tc.toFixed(1) + 'g';
+      document.getElementById('totalFat').innerText = tf.toFixed(1) + 'g';
+      const ratio = tc > 0 ? (tf / tc) : 0;
+      document.getElementById('fatRatio').innerText = tc > 0 ? ratio.toFixed(2) : '-';
+
+      const bolusEl = document.getElementById('bolusRecommendation');
+      let bolusText = 'Standard';
+      if (tf >= 15 && ratio >= 0.35) {
+        bolusText = ratio < 0.6 ? 'Dual-Wave (Mod) — 70% / 30%' : 'Dual-Wave (High) — 50% / 50%';
+      }
+      bolusEl.innerText = bolusText;
+      document.getElementById('bolusInfo').style.display = 'block';
+      mealTotalEl.classList.add('show');
+    }
+
+    // CRUD
+    function editItem(category, index) {
+      const item = (allData[category] || [])[index];
+      if (!item) return;
+      document.getElementById('modalTitle').innerText = 'Edit Food';
+      document.getElementById('editCategory').value = category;
+      document.getElementById('editIndex').value = index;
+      document.getElementById('foodName').value = item.name;
+      document.getElementById('measure').value = item.measure;
+      document.getElementById('carbs').value = item.carbs;
+      document.getElementById('fat').value = item.fat;
+      document.getElementById('notes').value = item.notes || '';
+      openModal();
+    }
+
+    function deleteItem(category, index) {
+      if (!confirm('Delete this item?')) return;
+      allData[category].splice(index, 1);
+      if (allData[category].length === 0) delete allData[category];
+      saveData();
+      renderData(document.getElementById('searchInput').value || '');
+    }
+
+    // Modal controls
+    const addButton = document.getElementById('addButton');
+    const addModal = document.getElementById('addModal');
+    const cancelButton = document.getElementById('cancelButton');
+    const addForm = document.getElementById('addForm');
+
+    addButton.addEventListener('click', () => {
+      document.getElementById('modalTitle').innerText = 'Add New Food';
+      document.getElementById('editCategory').value = '';
+      document.getElementById('editIndex').value = '';
+      addForm.reset();
+      document.getElementById('calculator').classList.add('hidden');
+      document.getElementById('calcResult').classList.remove('show');
+      document.getElementById('applyCalc').disabled = true;
+      openModal();
+    });
+
+    function openModal() { addModal.classList.add('active'); document.getElementById('ocrStatus').classList.remove('active'); }
+    function closeModal() { addModal.classList.remove('active'); }
+
+    cancelButton.addEventListener('click', () => { closeModal(); });
+
+    // Category select custom
+    const categorySelect = document.getElementById('categorySelect');
+    const customCategoryGroup = document.getElementById('customCategoryGroup');
+    categorySelect.addEventListener('change', () => {
+      if (categorySelect.value === 'Custom') customCategoryGroup.classList.remove('hidden'); else customCategoryGroup.classList.add('hidden');
+    });
+
+    // Form submit
+    addForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const editCat = document.getElementById('editCategory').value;
+      const editIdx = document.getElementById('editIndex').value;
+      let category = categorySelect.value === 'Custom' ? (document.getElementById('customCategory').value || 'Custom') : categorySelect.value;
+      const name = document.getElementById('foodName').value.trim();
+      const measure = document.getElementById('measure').value.trim();
+      const carbs = parseFloat(document.getElementById('carbs').value) || 0;
+      const fat = parseFloat(document.getElementById('fat').value) || 0;
+      const notes = document.getElementById('notes').value.trim();
+
+      if (!allData[category]) allData[category] = [];
+      const item = { name, measure, carbs, fat, notes };
+
+      if (editCat && editIdx !== '') {
+        // editing existing
+        allData[editCat][Number(editIdx)] = item;
+        // if category changed, move item
+        if (editCat !== category) {
+          allData[category].push(item);
+          allData[editCat].splice(Number(editIdx), 1);
+          if (allData[editCat].length === 0) delete allData[editCat];
+        }
+      } else {
+        allData[category].push(item);
+      }
+
+      saveData();
+      closeModal();
+      renderData(document.getElementById('searchInput').value || '');
+    });
+
+    // Calculator UI
+    const calcToggle = document.getElementById('calcToggle');
+    const calculator = document.getElementById('calculator');
+    const carbsPer100g = document.getElementById('carbsPer100g');
+    const fatPer100g = document.getElementById('fatPer100g');
+    const servingWeight = document.getElementById('servingWeight');
+    const calcResult = document.getElementById('calcResult');
+    const applyCalc = document.getElementById('applyCalc');
+
+    calcToggle.addEventListener('click', () => {
+      calculator.classList.toggle('hidden');
+    });
+
+    function updateCalcResult() {
+      const c100 = parseFloat(carbsPer100g.value) || 0;
+      const f100 = parseFloat(fatPer100g.value) || 0;
+      const w = parseFloat(servingWeight.value) || 0;
+      if (w > 0) {
+        const carbsServ = (c100 * w) / 100;
+        const fatServ = (f100 * w) / 100;
+        calcResult.innerText = `Per serving: ${carbsServ.toFixed(1)}g carbs · ${fatServ.toFixed(1)}g fat`;
+        calcResult.classList.add('show');
+        applyCalc.disabled = false;
+      } else {
+        calcResult.innerText = '';
+        calcResult.classList.remove('show');
+        applyCalc.disabled = true;
+      }
+    }
+
+    carbsPer100g.addEventListener('input', updateCalcResult);
+    fatPer100g.addEventListener('input', updateCalcResult);
+    servingWeight.addEventListener('input', updateCalcResult);
+
+    applyCalc.addEventListener('click', () => {
+      const c100 = parseFloat(carbsPer100g.value) || 0;
+      const f100 = parseFloat(fatPer100g.value) || 0;
+      const w = parseFloat(servingWeight.value) || 0;
+      if (w > 0) {
+        document.getElementById('carbs').value = ((c100 * w) / 100).toFixed(1);
+        document.getElementById('fat').value = ((f100 * w) / 100).toFixed(1);
+        calculator.classList.add('hidden');
+      }
+    });
+
+    // OCR worker
+    async function ensureWorker() {
+      if (workerReady) return;
+      try {
+        if (!ocrWorker) {
+          ocrWorker = Tesseract.createWorker({
+            logger: m => {
+              const el = document.getElementById('ocrStatus');
+              if (!el) return;
+              if (m && typeof m.progress === 'number') {
+                el.innerText = `OCR: ${Math.round(m.progress * 100)}%`;
+                el.classList.add('active');
+              }
+            }
+          });
+        }
+        await ocrWorker.load();
+        await ocrWorker.loadLanguage('eng');
+        await ocrWorker.initialize('eng');
+        await ocrWorker.setParameters({
+          tessedit_char_whitelist: '0123456789.gmper/abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ:-() ',
+          preserve_interword_spaces: '1'
+        });
+        workerReady = true;
+      } catch (e) {
+        console.error('worker init', e);
+        workerReady = false;
+      }
+    }
+
+    // Camera / file input handling
+    const nativeCamera = document.getElementById('nativeCamera');
+    const takePhotoBtn = document.getElementById('takePhotoBtn');
+    const cameraPreview = document.getElementById('cameraPreview');
+    const ocrStatus = document.getElementById('ocrStatus');
+
+    takePhotoBtn.addEventListener('click', () => nativeCamera.click());
+
+    nativeCamera.addEventListener('change', (ev) => {
+      const file = ev.target.files && ev.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async function () {
+        const dataUrl = reader.result;
+        cameraPreview.src = dataUrl;
+        cameraPreview.classList.add('active');
+        await runOcrOnDataUrl(dataUrl);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    async function runOcrOnDataUrl(dataUrl) {
+      try {
+        ocrStatus.classList.remove('error');
+        ocrStatus.classList.remove('success');
+        ocrStatus.classList.add('active');
+        ocrStatus.innerText = 'Preparing OCR...';
+        await ensureWorker();
+        if (!workerReady) { ocrStatus.innerText = 'OCR engine failed to initialize'; ocrStatus.classList.add('error'); return; }
+        ocrStatus.innerText = 'Scanning label...';
+        const { data: { text } } = await ocrWorker.recognize(dataUrl);
+        const raw = text || '';
+        ocrStatus.innerText = 'Parsing label...';
+        parseNutritionText(raw);
+        ocrStatus.classList.add('success');
+        ocrStatus.innerText = 'OCR complete — values populated where found';
+      } catch (e) {
+        console.error('OCR error', e);
+        ocrStatus.classList.add('error');
+        ocrStatus.innerText = 'Scanning failed. Try a clearer photo.';
+      }
+    }
+
+    // Parsing rules: prefer per-100g values; if only per-serving and serving weight present compute per-100
+    function parseNutritionText(text) {
+      const lower = (text || '').replace(/\r/g, '\n');
+      let c100 = null, f100 = null, serving = null;
+
+      // per-100 patterns
+      const carbPer100 = /(?:carb|carbohydrate|carbs)[^\d\n\r]{0,40}?(\d+\.?\d*)\s*g\s*(?:\/\s*100g|per\s*100g|per\s*100\s*g)?/i;
+      const carbPer100Alt = /(\d+\.?\d*)\s*g\s*(?:\/\s*100g|per\s*100g|per\s*100\s*g)[^\n\r]{0,40}?(?:carb|carbohydrate|carbs)/i;
+      const fatPer100 = /(?:fat|total fat)[^\d\n\r]{0,40}?(\d+\.?\d*)\s*g\s*(?:\/\s*100g|per\s*100g|per\s*100\s*g)?/i;
+      const fatPer100Alt = /(\d+\.?\d*)\s*g\s*(?:\/\s*100g|per\s*100g|per\s*100\s*g)[^\n\r]{0,40}?(?:fat|total fat)/i;
+
+      const mC = lower.match(carbPer100) || lower.match(carbPer100Alt);
+      if (mC) c100 = mC[1];
+
+      const mF = lower.match(fatPer100) || lower.match(fatPer100Alt);
+      if (mF) f100 = mF[1];
+
+      // serving patterns
+      const servingRegex = /serv(?:ing)?(?: size)?[:\s]*?(\d+\.?\d*)\s*g/i;
+      const servingParen = /\((\d+\.?\d*)\s*g\)/i;
+      const servingSimple = /(\d+\.?\d*)\s*g\s*(?:serving|serv)/i;
+      const mS = lower.match(servingRegex) || lower.match(servingParen) || lower.match(servingSimple);
+      if (mS) serving = mS[1];
+
+      // if per-100 not found but per-serving and serving weight present, compute per-100
+      if (serving && (!c100 || !f100)) {
+        const carbPerServing = /(?:carb|carbohydrate|carbs)[^\d\n\r]{0,40}?(\d+\.?\d*)\s*g(?!\s*\/\s*100g)/i;
+        const fatPerServing = /(?:fat|total fat)[^\d\n\r]{0,40}?(\d+\.?\d*)\s*g(?!\s*\/\s*100g)/i;
+        const cm = lower.match(carbPerServing);
+        const fm = lower.match(fatPerServing);
+        const servVal = parseFloat(serving);
+        if (cm && !c100 && servVal > 0) c100 = ((parseFloat(cm[1]) / servVal) * 100).toFixed(1);
+        if (fm && !f100 && servVal > 0) f100 = ((parseFloat(fm[1]) / servVal) * 100).toFixed(1);
+      }
+
+      // populate calculator fields (per-100) and serving weight
+      if (c100) document.getElementById('carbsPer100g').value = parseFloat(c100).toFixed(1);
+      if (f100) document.getElementById('fatPer100g').value = parseFloat(f100).toFixed(1);
+      if (serving) document.getElementById('servingWeight').value = parseFloat(serving).toFixed(0);
+
+      updateCalcResult();
+    }
+
+    // Initialize OCR worker lazily on first use to avoid long startup
+    // (ensureWorker called by runOcrOnDataUrl)
+
+    // Search input
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      renderData(e.target.value || '');
+    });
+
+    // Clear meal button
+    document.getElementById('clearMealBtn').addEventListener('click', clearMealSelection);
+
+    // Initialize app
+    function init() {
+      loadData();
+      renderData();
+      // wire file input click
+      document.getElementById('nativeCamera').addEventListener('change', (ev) => {
+        const file = ev.target.files && ev.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async function () {
+          const dataUrl = reader.result;
+          document.getElementById('cameraPreview').src = dataUrl;
+          document.getElementById('cameraPreview').classList.add('active');
+          await runOcrOnDataUrl(dataUrl);
         };
+        reader.readAsDataURL(file);
+      });
 
-        let allData = {};
-        let selectedItems = new Set();
-        let cameraStream = null;
-        let isProcessing = false;
-        
-        function getFatRatioColor(carbs, fat) {
-            const ratio = fat / carbs;
-            if (ratio < 0.3) return '#5f9767';
-            else if (ratio < 0.5) return '#e8a647';
-            else if (ratio < 0.8) return '#e87d47';
-            else return '#d95d47';
-        }
-        
-        function loadData() {
-            const saved = localStorage.getItem('carbData');
-            if (saved) {
-                allData = JSON.parse(saved);
-            } else {
-                allData = initialData;
-                saveData();
-            }
-        }
+      // takePhotoBtn already wired to click file input
+      document.getElementById('takePhotoBtn').addEventListener('click', () => document.getElementById('nativeCamera').click());
 
-        function saveData() {
-            localStorage.setItem('carbData', JSON.stringify(allData));
-        }
+      // cleanup on unload
+      window.addEventListener('beforeunload', async () => {
+        try { if (ocrWorker && workerReady) await ocrWorker.terminate(); } catch (e) {}
+      });
+    }
 
-        function renderData(searchTerm = '') {
-            const content = document.getElementById('content');
-            const lowerSearch = searchTerm.toLowerCase();
-            let totalItems = 0;
-            let html = '';
-
-            Object.keys(allData).sort().forEach(category => {
-                const items = allData[category].filter(item => 
-                    item.name.toLowerCase().includes(lowerSearch) ||
-                    item.measure.toLowerCase().includes(lowerSearch) ||
-                    (item.notes && item.notes.toLowerCase().includes(lowerSearch))
-                );
-
-                if (items.length > 0) {
-                    totalItems += items.length;
-                    html += `
-                        <div class="category">
-                            <div class="category-header">
-                                <span>${category}</span>
-                                <span class="category-count">${items.length}</span>
-                            </div>
-                            <div class="items">
-                    `;
-
-                    items.forEach(item => {
-                        const actualIndex = allData[category].indexOf(item);
-                        const itemId = `${category}-${actualIndex}`;
-                        const isSelected = selectedItems.has(itemId);
-                        
-                        html += `
-                            <div class="item ${isSelected ? 'selected' : ''}" id="item-${itemId}">
-                                <input type="checkbox" class="item-checkbox" 
-                                       ${isSelected ? 'checked' : ''}
-                                       onchange="toggleItemSelection('${category}', ${actualIndex})"
-                                       onclick="event.stopPropagation()">
-                                <div>
-                                    <div class="item-name">${item.name}</div>
-                                    <div class="item-details">
-                                        ${item.measure}
-                                        ${item.notes ? `<br><em>${item.notes}</em>` : ''}
-                                    </div>
-                                </div>
-                                <div class="item-nutrition">
-                                    <div class="nutrition-badge" style="background: ${getFatRatioColor(item.carbs, item.fat)}">
-                                        ${item.carbs}
-                                        <span class="nutrition-label">carbs</span>
-                                    </div>
-                                </div>
-                                <div class="item-actions">
-                                    <button class="item-btn edit-btn" onclick="editItem('${category}', ${actualIndex})">✏️</button>
-                                    <button class="item-btn delete-btn" onclick="deleteItem('${category}', ${actualIndex})">🗑️</button>
-                                </div>
-                            </div>
-                        `;
-                    });
-
-                    html += `</div></div>`;
-                }
-            });
-
-            if (html === '') {
-                html = `<div class="empty-state">🔍<br>No foods found</div>`;
-            }
-
-            content.innerHTML = html;
-            
-            const allItemsCount = Object.values(allData).reduce((sum, items) => sum + items.length, 0);
-            document.getElementById('itemCount').textContent = searchTerm ? 
-                `${totalItems} of ${allItemsCount}` : 
-                `${allItemsCount} items`;
-        }
-
-        document.getElementById('searchInput').addEventListener('input', (e) => {
-            renderData(e.target.value);
-        });
-
-        window.toggleItemSelection = function(category, index) {
-            const itemId = `${category}-${index}`;
-            
-            if (selectedItems.has(itemId)) {
-                selectedItems.delete(itemId);
-            } else {
-                selectedItems.add(itemId);
-            }
-            
-            updateMealTotal();
-            
-            const itemElement = document.getElementById(`item-${itemId}`);
-            if (itemElement) {
-                itemElement.classList.toggle('selected');
-            }
-        };
-
-        function updateMealTotal() {
-            let totalCarbs = 0;
-            let totalFat = 0;
-            
-            selectedItems.forEach(itemId => {
-                const [category, index] = itemId.split('-');
-                const item = allData[category][parseInt(index)];
-                if (item) {
-                    totalCarbs += item.carbs;
-                    totalFat += item.fat;
-                }
-            });
-            
-            document.getElementById('totalCarbs').textContent = totalCarbs.toFixed(1) + 'g';
-            document.getElementById('totalFat').textContent = totalFat.toFixed(1) + 'g';
-            
-            const mealTotal = document.getElementById('mealTotal');
-            const bolusInfo = document.getElementById('bolusInfo');
-            
-            if (totalCarbs > 0) {
-                const fatToCarb = totalFat / totalCarbs;
-                const fatRatioPercent = (fatToCarb * 100).toFixed(0);
-                
-                document.getElementById('fatRatio').textContent = `${fatRatioPercent}%`;
-                
-                let recommendation = '', split = '', duration = '', panelColor = '';
-                
-                if (fatToCarb < 0.3) {
-                    recommendation = '✓ Standard Bolus';
-                    split = '100% upfront';
-                    duration = '';
-                    panelColor = '#5f9767';
-                } else if (fatToCarb < 0.5) {
-                    recommendation = '⚡ Dual Wave 70/30';
-                    split = '70% now / 30% extended';
-                    duration = '2-3 hours';
-                    panelColor = '#e8a647';
-                } else if (fatToCarb < 0.8) {
-                    recommendation = '⚡ Dual Wave 50/50';
-                    split = '50% now / 50% extended';
-                    duration = '3-4 hours';
-                    panelColor = '#e87d47';
-                } else {
-                    recommendation = '⚡ Dual Wave 40/60';
-                    split = '40% now / 60% extended';
-                    duration = '4-6 hours';
-                    panelColor = '#d95d47';
-                }
-                
-                mealTotal.style.background = panelColor;
-                
-                document.getElementById('bolusRecommendation').innerHTML = 
-                    `${recommendation}<br><small style="font-weight: normal; font-size: 12px;">${split}${duration ? ' • ' + duration : ''}</small>`;
-                bolusInfo.style.display = 'block';
-            } else {
-                bolusInfo.style.display = 'none';
-                mealTotal.style.background = '';
-            }
-            
-            if (selectedItems.size > 0) {
-                mealTotal.classList.add('show');
-            } else {
-                mealTotal.classList.remove('show');
-            }
-        }
-
-        window.clearMealSelection = function() {
-            selectedItems.clear();
-            updateMealTotal();
-            renderData(document.getElementById('searchInput').value);
-        };
-
-        window.editItem = function(category, index) {
-            const item = allData[category][index];
-            
-            document.getElementById('modalTitle').textContent = 'Edit Food';
-            document.getElementById('submitButton').textContent = 'Save Changes';
-            document.getElementById('editCategory').value = category;
-            document.getElementById('editIndex').value = index;
-            
-            document.getElementById('categorySelect').value = category;
-            document.getElementById('foodName').value = item.name;
-            document.getElementById('measure').value = item.measure;
-            document.getElementById('carbs').value = item.carbs;
-            document.getElementById('fat').value = item.fat;
-            document.getElementById('notes').value = item.notes || '';
-            
-            modal.classList.add('active');
-        };
-
-        window.deleteItem = function(category, index) {
-            const item = allData[category][index];
-            if (confirm(`Delete "${item.name}"?`)) {
-                allData[category].splice(index, 1);
-                if (allData[category].length === 0) {
-                    delete allData[category];
-                }
-                saveData();
-                renderData(document.getElementById('searchInput').value);
-            }
-        };
-
-        const modal = document.getElementById('addModal');
-        const addButton = document.getElementById('addButton');
-        const cancelButton = document.getElementById('cancelButton');
-        const categorySelect = document.getElementById('categorySelect');
-        const customCategoryGroup = document.getElementById('customCategoryGroup');
-
-        addButton.addEventListener('click', () => {
-            document.getElementById('modalTitle').textContent = 'Add New Food';
-            document.getElementById('submitButton').textContent = 'Add Food';
-            document.getElementById('editCategory').value = '';
-            document.getElementById('editIndex').value = '';
-            modal.classList.add('active');
-        });
-
-        function closeModal() {
-            modal.classList.remove('active');
-            document.getElementById('addForm').reset();
-            customCategoryGroup.classList.add('hidden');
-            calculator.classList.add('hidden');
-            calcToggle.textContent = '🧮 Use Calculator (from 100g label)';
-            calcResult.textContent = '';
-            calcResult.classList.remove('show');
-            document.getElementById('editCategory').value = '';
-            document.getElementById('editIndex').value = '';
-            document.getElementById('ocrDebug').classList.remove('active');
-            document.getElementById('ocrStatus').classList.remove('active');
-            stopCamera();
-        }
-
-        cancelButton.addEventListener('click', closeModal);
-
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                closeModal();
-            }
-        });
-
-        categorySelect.addEventListener('change', (e) => {
-            if (e.target.value === 'Custom') {
-                customCategoryGroup.classList.remove('hidden');
-            } else {
-                customCategoryGroup.classList.add('hidden');
-            }
-        });
-
-        // CAMERA AND OCR
-        const scanLabelBtn = document.getElementById('scanLabel');
-        const cameraPreview = document.getElementById('cameraPreview');
-        const cameraCanvas = document.getElementById('cameraCanvas');
-        const ocrStatus = document.getElementById('ocrStatus');
-        const ocrDebug = document.getElementById('ocrDebug');
-
-        scanLabelBtn.addEventListener('click', async () => {
-            if (isProcessing) return;
-            
-            if (cameraStream) {
-                await captureAndProcess();
-            } else {
-                await startCamera();
-            }
-        });
-
-        async function startCamera() {
-            try {
-                cameraStream = await navigator.mediaDevices.getUserMedia({
-                    video: { 
-                        facingMode: 'environment',
-                        width: { ideal: 2560 },
-                        height: { ideal: 1440 }
-                    }
-                });
-                cameraPreview.srcObject = cameraStream;
-                cameraPreview.classList.add('active');
-                scanLabelBtn.textContent = '📸 Capture & Read Label';
-                scanLabelBtn.style.background = '#c93a3a';
-                showOCRStatus('📷 Camera ready - position nutrition label clearly', '');
-            } catch (err) {
-                showOCRStatus('❌ Camera permission denied', 'error');
-            }
-        }
-
-        async function captureAndProcess() {
-            if (isProcessing) return;
-            
-            isProcessing = true;
-            showOCRStatus('📸 Capturing...', '');
-            
-            const context = cameraCanvas.getContext('2d');
-            cameraCanvas.width = cameraPreview.videoWidth;
-            cameraCanvas.height = cameraPreview.videoHeight;
-            context.drawImage(cameraPreview, 0, 0);
-            
-            stopCamera();
-            scanLabelBtn.disabled = true;
-            
-            showOCRStatus('🔍 Reading text... (15-30 seconds)', '');
-            
-            try {
-                const worker = await Tesseract.createWorker('eng');
-                
-                const { data: { text } } = await worker.recognize(cameraCanvas);
-                
-                await worker.terminate();
-                
-                ocrDebug.textContent = '=== TEXT DETECTED ===\n' + text + '\n=== END ===';
-                ocrDebug.classList.add('active');
-                
-                const nutrition = parseNutritionLabel(text);
-                
-                if (nutrition.carbs || nutrition.fat) {
-                    if (nutrition.carbs) {
-                        document.getElementById('carbsPer100g').value = nutrition.carbs;
-                    }
-                    if (nutrition.fat) {
-                        document.getElementById('fatPer100g').value = nutrition.fat;
-                    }
-                    
-                    if (calculator.classList.contains('hidden')) {
-                        calculator.classList.remove('hidden');
-                        calcToggle.textContent = '✖️ Close Calculator';
-                    }
-                    
-                    let found = [];
-                    if (nutrition.carbs) found.push(`${nutrition.carbs}g carbs`);
-                    if (nutrition.fat) found.push(`${nutrition.fat}g fat`);
-                    
-                    showOCRStatus(`✓ Found: ${found.join(', ')} per 100g`, 'success');
-                } else {
-                    showOCRStatus('⚠️ No values detected - check debug panel below', 'error');
-                }
-                
-            } catch (error) {
-                showOCRStatus('❌ OCR failed - ' + error.message, 'error');
-            }
-            
-            isProcessing = false;
-            scanLabelBtn.disabled = false;
-            scanLabelBtn.textContent = '📷 Scan Nutrition Label';
-        }
-
-        function parseNutritionLabel(text) {
-            const result = { carbs: null, fat: null };
-            
-            const normalized = text
-                .toLowerCase()
-                .replace(/[,''`]/g, '')
-                .replace(/\s+/g, ' ')
-                .replace(/[o]/gi, '0')
-                .replace(/[il]/g, '1');
-            
-            // Look for patterns
-            const lines = normalized.split(/[\n\r]+/);
-            
-            for (const line of lines) {
-                // Carbs - look for line containing carb keywords
-                if (!result.carbs && /carb|carbohydrate|cho/i.test(line)) {
-                    // Extract any number from this line
-                    const nums = line.match(/\d+\.?\d*/g);
-                    if (nums) {
-                        for (const num of nums) {
-                            const val = parseFloat(num);
-                            if (val > 0 && val <= 100) {
-                                result.carbs = val;
-                                break;
-                            }
-                        }
-                    }
-                }
-                
-                // Fat - but not saturated fat
-                if (!result.fat && /\bfat\b/i.test(line) && !/saturated|sat\./i.test(line)) {
-                    const nums = line.match(/\d+\.?\d*/g);
-                    if (nums) {
-                        for (const num of nums) {
-                            const val = parseFloat(num);
-                            if (val >= 0 && val <= 100) {
-                                result.fat = val;
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-            
-            return result;
-        }
-
-        function showOCRStatus(message, type) {
-            ocrStatus.textContent = message;
-            ocrStatus.className = 'ocr-status active';
-            if (type) ocrStatus.classList.add(type);
-        }
-
-        function stopCamera() {
-            if (cameraStream) {
-                cameraStream.getTracks().forEach(track => track.stop());
-                cameraStream = null;
-                cameraPreview.classList.remove('active');
-                scanLabelBtn.textContent = '📷 Scan Nutrition Label';
-                scanLabelBtn.style.background = '';
-            }
-        }
-
-        // Calculator
-        const calcToggle = document.getElementById('calcToggle');
-        const calculator = document.getElementById('calculator');
-        const carbsPer100g = document.getElementById('carbsPer100g');
-        const fatPer100g = document.getElementById('fatPer100g');
-        const servingWeight = document.getElementById('servingWeight');
-        const calcResult = document.getElementById('calcResult');
-        const applyCalc = document.getElementById('applyCalc');
-
-        calcToggle.addEventListener('click', () => {
-            calculator.classList.toggle('hidden');
-            calcToggle.textContent = calculator.classList.contains('hidden') ? 
-                '🧮 Use Calculator (from 100g label)' : '✖️ Close Calculator';
-        });
-
-        function calculateNutrition() {
-            const carbsPer100 = parseFloat(carbsPer100g.value);
-            const fatPer100 = parseFloat(fatPer100g.value);
-            const weight = parseFloat(servingWeight.value);
-            
-            if (weight && (carbsPer100 || fatPer100)) {
-                const carbsResult = carbsPer100 ? (carbsPer100 * weight / 100).toFixed(1) : 0;
-                const fatResult = fatPer100 ? (fatPer100 * weight / 100).toFixed(1) : 0;
-                
-                calcResult.innerHTML = `<strong>${weight}g serving:</strong><br>${carbsResult}g carbs, ${fatResult}g fat`;
-                calcResult.classList.add('show');
-                applyCalc.disabled = false;
-                return { carbs: carbsResult, fat: fatResult };
-            } else {
-                calcResult.textContent = 'Enter weight and at least one nutrient';
-                calcResult.classList.remove('show');
-                applyCalc.disabled = true;
-                return null;
-            }
-        }
-
-        carbsPer100g.addEventListener('input', calculateNutrition);
-        fatPer100g.addEventListener('input', calculateNutrition);
-        servingWeight.addEventListener('input', calculateNutrition);
-
-        applyCalc.addEventListener('click', () => {
-            const result = calculateNutrition();
-            if (result) {
-                document.getElementById('carbs').value = result.carbs;
-                document.getElementById('fat').value = result.fat;
-                
-                if (!document.getElementById('measure').value) {
-                    document.getElementById('measure').value = `${servingWeight.value}g`;
-                }
-                
-                applyCalc.textContent = '✓ Applied!';
-                setTimeout(() => {
-                    applyCalc.textContent = 'Apply Values';
-                }, 1500);
-            }
-        });
-
-        document.getElementById('addForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            
-            let category = document.getElementById('categorySelect').value;
-            if (category === 'Custom') {
-                category = document.getElementById('customCategory').value.trim();
-                if (!category) {
-                    alert('Please enter a category name');
-                    return;
-                }
-            }
-
-            const newItem = {
-                name: document.getElementById('foodName').value.trim(),
-                measure: document.getElementById('measure').value.trim(),
-                carbs: parseFloat(document.getElementById('carbs').value),
-                fat: parseFloat(document.getElementById('fat').value),
-                notes: document.getElementById('notes').value.trim()
-            };
-
-            const editCategory = document.getElementById('editCategory').value;
-            const editIndex = document.getElementById('editIndex').value;
-
-            if (editCategory && editIndex !== '') {
-                allData[editCategory].splice(parseInt(editIndex), 1);
-                if (allData[editCategory].length === 0) {
-                    delete allData[editCategory];
-                }
-            }
-            
-            if (!allData[category]) {
-                allData[category] = [];
-            }
-            allData[category].push(newItem);
-            allData[category].sort((a, b) => a.name.localeCompare(b.name));
-            
-            saveData();
-            renderData(document.getElementById('searchInput').value);
-            closeModal();
-            
-            addButton.textContent = '✓';
-            setTimeout(() => {
-                addButton.textContent = '+';
-            }, 1000);
-        });
-
-        loadData();
-        renderData();
-    </script>
+    init();
+  </script>
 </body>
 </html>
