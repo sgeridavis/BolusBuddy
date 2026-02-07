@@ -622,9 +622,11 @@
                     </div>
                 </div>
                 
-                <button type="button" class="camera-btn" id="scanLabel">📷 Scan Nutrition Label</button>
-                <video id="cameraPreview" class="camera-preview" autoplay playsinline></video>
-                <canvas id="cameraCanvas" style="display:none;"></canvas>
+		<button type="button" class="camera-btn" onclick="document.getElementById('nativeCamera').click()">
+    		📸 Take Sharp Photo of Label
+		</button>
+		<input type="file" id="nativeCamera" accept="image/*" capture="environment" style="display:none" 			onchange="processSharpPhoto(this)">
+		<div id="ocrStatus" class="ocr-status" style="margin-top: 10px; font-size: 14px; text-align: center;"></div>
                 <div id="ocrStatus" class="ocr-status"></div>
                 
                 <button type="button" class="calc-toggle" id="calcToggle">🧮 Use Calculator (from 100g label)</button>
@@ -1041,280 +1043,49 @@
             }
         });
 
-        // Camera scanning with OCR
-        const scanLabelBtn = document.getElementById('scanLabel');
-        const cameraPreview = document.getElementById('cameraPreview');
-        const cameraCanvas = document.getElementById('cameraCanvas');
-        const ocrStatus = document.getElementById('ocrStatus');
-        let isProcessing = false;
-
-        scanLabelBtn.addEventListener('click', async () => {
-            if (isProcessing) {
-                return; // Don't start new scan while processing
-            }
+        // New High-Quality Photo Processing for S24 FE
+        async function processSharpPhoto(input) {
+            if (!input.files || !input.files[0]) return;
             
-            if (cameraStream) {
-                // If camera is active, capture and process
-                await captureAndProcess();
-            } else {
-                // Start camera
-                await startCamera();
-            }
-        });
-
-        async function startCamera() {
+            const file = input.files[0];
+            const statusDiv = document.getElementById('ocrStatus');
+            statusDiv.textContent = '🔍 Reading high-quality image... please wait.';
+            statusDiv.style.color = 'var(--primary)';
+            
             try {
-                // Request higher resolution and better settings for text recognition
-                cameraStream = await navigator.mediaDevices.getUserMedia({
-                    video: { 
-                        facingMode: 'environment',
-                        width: { ideal: 3840, min: 1280 },
-                        height: { ideal: 2160, min: 720 },
-                        focusMode: 'continuous',
-                        aspectRatio: { ideal: 16/9 }
+                const result = await Tesseract.recognize(file, 'eng', {
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            statusDiv.textContent = `🔍 Reading... ${Math.round(m.progress * 100)}%`;
+                        }
                     }
                 });
-                cameraPreview.srcObject = cameraStream;
-                cameraPreview.classList.add('active');
-                scanLabelBtn.textContent = '📸 Capture & Read Label';
-                scanLabelBtn.style.background = '#c93a3a';
                 
-                showOCRStatus('📷 Camera ready. Position label clearly and tap capture.', '');
-            } catch (err) {
-                console.error('Camera error:', err);
-                showOCRStatus('Camera access denied. Please enable camera permissions in settings.', 'error');
-            }
-        }
-
-        async function captureAndProcess() {
-            if (isProcessing) return;
-            
-            isProcessing = true;
-            showOCRStatus('📸 Capturing image...', '');
-            
-            // Capture frame from video with better quality
-            const context = cameraCanvas.getContext('2d');
-            cameraCanvas.width = cameraPreview.videoWidth;
-            cameraCanvas.height = cameraPreview.videoHeight;
-            context.drawImage(cameraPreview, 0, 0);
-            
-            // Enhance image contrast for better OCR
-            const imageData = context.getImageData(0, 0, cameraCanvas.width, cameraCanvas.height);
-            const data = imageData.data;
-            
-            // Simple contrast enhancement
-            const factor = 1.5;
-            for (let i = 0; i < data.length; i += 4) {
-                data[i] = Math.min(255, ((data[i] - 128) * factor) + 128);     // Red
-                data[i+1] = Math.min(255, ((data[i+1] - 128) * factor) + 128); // Green
-                data[i+2] = Math.min(255, ((data[i+2] - 128) * factor) + 128); // Blue
-            }
-            context.putImageData(imageData, 0, 0);
-            
-            // Stop camera
-            stopCamera();
-            scanLabelBtn.disabled = true;
-            
-            showOCRStatus('🔍 Reading nutrition label... This may take 10-20 seconds', '');
-            
-            try {
-                // Run OCR with better settings
-                const result = await Tesseract.recognize(
-                    cameraCanvas,
-                    'eng',
-                    {
-                        logger: info => {
-                            if (info.status === 'recognizing text') {
-                                const percent = Math.round(info.progress * 100);
-                                showOCRStatus(`🔍 Reading... ${percent}%`, '');
-                            }
-                        },
-                        tessedit_char_whitelist: '0123456789.,abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ:() ',
-                    }
-                );
+                const text = result.data.text.toLowerCase().replace(/\s+/g, ' ').replace(/[,]/g, '.');
                 
-                const text = result.data.text;
-                console.log('=== OCR RESULT ===');
-                console.log(text);
-                console.log('==================');
+                // Search for numbers
+                const carbMatch = text.match(/(?:carb|carbohydrate|total carb)[\s\w]*?(\d+\.?\d*)/);
+                const fatMatch = text.match(/(?:fat|total fat)[\s\w]*?(\d+\.?\d*)/);
                 
-                // Parse nutrition information
-                const nutrition = parseNutritionLabel(text);
-                
-                if (nutrition.carbs || nutrition.fat) {
-                    // Fill in the 100g calculator fields
-                    if (nutrition.carbs) {
-                        document.getElementById('carbsPer100g').value = nutrition.carbs;
-                    }
-                    if (nutrition.fat) {
-                        document.getElementById('fatPer100g').value = nutrition.fat;
-                    }
+                if (carbMatch || fatMatch) {
+                    if (carbMatch) document.getElementById('carbsPer100g').value = carbMatch[1];
+                    if (fatMatch) document.getElementById('fatPer100g').value = fatMatch[1];
                     
-                    // Open calculator if it's hidden
-                    if (calculator.classList.contains('hidden')) {
-                        calculator.classList.remove('hidden');
-                        calcToggle.textContent = '✖️ Close Calculator';
-                    }
+                    // Show Calculator
+                    document.getElementById('calculator').classList.remove('hidden');
+                    document.getElementById('calcToggle').textContent = '✖️ Close Calculator';
                     
-                    let foundItems = [];
-                    if (nutrition.carbs) foundItems.push(`${nutrition.carbs}g carbs`);
-                    if (nutrition.fat) foundItems.push(`${nutrition.fat}g fat`);
-                    
-                    showOCRStatus(`✓ Found: ${foundItems.join(', ')} per 100g`, 'success');
+                    statusDiv.textContent = '✓ Scan successful!';
+                    statusDiv.style.color = 'green';
                 } else {
-                    showOCRStatus('⚠️ Could not detect nutrition values. Check console (F12) for details or enter manually.', 'error');
+                    statusDiv.textContent = '⚠️ No numbers found. Try a clearer photo.';
+                    statusDiv.style.color = 'orange';
                 }
-                
-            } catch (error) {
-                console.error('OCR Error:', error);
-                showOCRStatus('❌ Error reading label. Please try again or enter manually.', 'error');
+            } catch (err) {
+                statusDiv.textContent = '❌ Error reading label.';
+                statusDiv.style.color = 'red';
             }
-            
-            isProcessing = false;
-            scanLabelBtn.disabled = false;
-            scanLabelBtn.textContent = '📷 Scan Nutrition Label';
-        }
-
-        function parseNutritionLabel(text) {
-            const result = { carbs: null, fat: null };
-            
-            console.log('Raw OCR text:', text);
-            
-            // Normalize text - handle common OCR errors
-            const normalized = text
-                .toLowerCase()
-                .replace(/\s+/g, ' ')
-                .replace(/[,]/g, '.')
-                .replace(/o/gi, '0')  // OCR often confuses O with 0
-                .replace(/l/g, '1')   // OCR often confuses l with 1
-                .replace(/['''`]/g, '') // Remove quotes
-                .trim();
-            
-            console.log('Normalized text:', normalized);
-            
-            // Split into lines for better parsing
-            const lines = normalized.split(/[\n\r]+/);
-            
-            // Look for "per 100g" section
-            let per100gSection = '';
-            for (let i = 0; i < lines.length; i++) {
-                if (lines[i].includes('per 100') || lines[i].includes('per100') || 
-                    lines[i].includes('/100') || lines[i].includes('100g') || 
-                    lines[i].includes('100 g')) {
-                    // Get surrounding lines
-                    per100gSection = lines.slice(Math.max(0, i-3), i+10).join(' ');
-                    break;
-                }
-            }
-            
-            const searchText = per100gSection || normalized;
-            console.log('Search text:', searchText);
-            
-            // Enhanced carbohydrate patterns - look for numbers after carb-related words
-            const carbPatterns = [
-                /carbohydrate[s]?[:\s]+(\d+\.?\d*)/i,
-                /total carb[s]?[:\s]+(\d+\.?\d*)/i,
-                /carb[s]?[:\s]+(\d+\.?\d*)/i,
-                /carbohydrate.*?(\d+\.?\d*)\s*g/i,
-                /carb.*?(\d+\.?\d*)\s*g/i,
-                /\bcarbs?\b.*?(\d+\.?\d*)/i,
-                /(?:total\s+)?carbohydrate.*?(\d{1,2}\.?\d*)/i
-            ];
-            
-            for (const pattern of carbPatterns) {
-                const match = searchText.match(pattern);
-                if (match) {
-                    const value = parseFloat(match[1]);
-                    // Sanity check - carbs per 100g usually between 0-100
-                    if (value >= 0 && value <= 100) {
-                        result.carbs = value;
-                        console.log('Found carbs:', value);
-                        break;
-                    }
-                }
-            }
-            
-            // Enhanced fat patterns
-            const fatPatterns = [
-                /(?:total\s+)?fat[:\s]+(\d+\.?\d*)/i,
-                /\bfat\b[:\s]+(\d+\.?\d*)/i,
-                /fat.*?(\d+\.?\d*)\s*g/i,
-                /(?<!saturated\s)(?<!sat\s)fat.*?(\d{1,2}\.?\d*)/i,
-                /total\s+fat.*?(\d{1,2}\.?\d*)/i
-            ];
-            
-            for (const pattern of fatPatterns) {
-                const match = searchText.match(pattern);
-                if (match) {
-                    const value = parseFloat(match[1]);
-                    // Sanity check - fat per 100g usually between 0-100
-                    // Make sure it's not "saturated fat"
-                    const beforeMatch = searchText.substring(0, match.index);
-                    if (value >= 0 && value <= 100 && 
-                        !beforeMatch.endsWith('saturated ') && 
-                        !beforeMatch.endsWith('sat ')) {
-                        result.fat = value;
-                        console.log('Found fat:', value);
-                        break;
-                    }
-                }
-            }
-            
-            // If we didn't find values, try a more aggressive number search
-            if (!result.carbs || !result.fat) {
-                // Look for lines that contain nutrition-related words and numbers
-                for (const line of lines) {
-                    if (!result.carbs && /carb/i.test(line)) {
-                        const numbers = line.match(/\d+\.?\d*/g);
-                        if (numbers && numbers.length > 0) {
-                            const value = parseFloat(numbers[0]);
-                            if (value >= 0 && value <= 100) {
-                                result.carbs = value;
-                                console.log('Found carbs (aggressive):', value);
-                            }
-                        }
-                    }
-                    
-                    if (!result.fat && /\bfat\b/i.test(line) && !/saturated/i.test(line)) {
-                        const numbers = line.match(/\d+\.?\d*/g);
-                        if (numbers && numbers.length > 0) {
-                            const value = parseFloat(numbers[0]);
-                            if (value >= 0 && value <= 100) {
-                                result.fat = value;
-                                console.log('Found fat (aggressive):', value);
-                            }
-                        }
-                    }
-                }
-            }
-            
-            console.log('Final result:', result);
-            return result;
-        }
-
-        function showOCRStatus(message, type) {
-            ocrStatus.textContent = message;
-            ocrStatus.className = 'ocr-status active';
-            if (type) {
-                ocrStatus.classList.add(type);
-            }
-            
-            // Auto-hide success/error messages after 5 seconds
-            if (type === 'success' || type === 'error') {
-                setTimeout(() => {
-                    ocrStatus.classList.remove('active');
-                }, 5000);
-            }
-        }
-
-        function stopCamera() {
-            if (cameraStream) {
-                cameraStream.getTracks().forEach(track => track.stop());
-                cameraStream = null;
-                cameraPreview.classList.remove('active');
-                scanLabelBtn.textContent = '📷 Scan Nutrition Label';
-                scanLabelBtn.style.background = '';
-            }
+            input.value = ''; // Reset for next time
         }
 
         // Calculator functionality
