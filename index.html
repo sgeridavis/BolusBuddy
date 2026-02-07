@@ -584,13 +584,75 @@
                     </button>
                     <input type="file" id="nativeCamera" accept="image/*" capture="environment" style="display:none" onchange="processSharpPhoto(this)">
                     <div id="ocrStatus" class="ocr-status" style="display:block; margin-top: 10px; font-weight: bold; text-align: center; min-height: 20px; white-space: pre-wrap; color: var(--primary);"></div>
+                <button type="button" class="calc-toggle" id="calcToggle">🧮 Use Calculator (from 100g label)</button>
+
+                <div id="calculator" class="calculator hidden">
+                    <div class="calc-header">100g Label Details:</div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Carbs/100g</label>
+                            <input type="number" step="0.1" class="form-input" id="carbsPer100g" placeholder="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Fat/100g</label>
+                            <input type="number" step="0.1" class="form-input" id="fatPer100g" placeholder="0">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Your Serving Weight (g)</label>
+                        <input type="number" class="form-input" id="servingWeight" placeholder="e.g. 50">
+                    </div>
+                    <div id="calcResult" class="calc-result"></div>
+                    <button type="button" id="applyCalc" class="camera-btn" style="background: var(--primary); margin-top: 10px;" disabled>Apply Values</button>
                 </div>
 
-                <button type="button" class="calc-toggle" id="calcToggle">🧮 Use Calculator (from 100g label)</button>
+                <div class="form-group" style="margin-top: 20px;">
+                    <label class="form-label">Category</label>
+                    <select class="form-select" id="categorySelect">
+                        <option value="Cereal/Breakfasts">Cereal/Breakfasts</option>
+                        <option value="Biscuits/Cakes">Biscuits/Cakes</option>
+                        <option value="Dinners">Dinners</option>
+                        <option value="Desserts">Desserts</option>
+                        <option value="Veges/Rice">Veges/Rice</option>
+                        <option value="Crackers">Crackers</option>
+                        <option value="Lollies/Misc">Lollies/Misc</option>
+                        <option value="Custom">+ Add New Category...</option>
+                    </select>
+                </div>
+
+                <div id="customCategoryGroup" class="form-group hidden">
+                    <label class="form-label">New Category Name</label>
+                    <input type="text" class="form-input" id="customCategory" placeholder="Enter category name">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Food Name</label>
+                    <input type="text" class="form-input" id="foodName" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Measure (e.g. 1 cup, 2 biscuits)</label>
+                    <input type="text" class="form-input" id="measure" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Carbs (g)</label>
+                        <input type="number" step="0.1" class="form-input" id="carbs" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Fat (g)</label>
+                        <input type="number" step="0.1" class="form-input" id="fat" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
                     <label class="form-label">Notes (optional)</label>
                     <input type="text" class="form-input" id="notes">
                 </div>
-                
+
+                <input type="hidden" id="editCategory">
+                <input type="hidden" id="editIndex">
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" id="cancelButton">Cancel</button>
                     <button type="submit" class="btn btn-primary" id="submitButton">Add Food</button>
@@ -717,7 +779,7 @@
         
         function loadData() {
             const saved = localStorage.getItem('carbData');
-            if (saved) {
+            if (false) {
                 allData = JSON.parse(saved);
             } else {
                 allData = initialData;
@@ -959,7 +1021,7 @@
             calcResult.classList.remove('show');
             document.getElementById('editCategory').value = '';
             document.getElementById('editIndex').value = '';
-            stopCamera();
+            
         }
 
         cancelButton.addEventListener('click', closeModal);
