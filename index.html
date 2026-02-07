@@ -55,6 +55,7 @@
   .ocr-error{background:#c93a3a;color:#fff}
   .hidden{display:none !important}
   .small-muted{font-size:12px;color:var(--muted)}
+  .item-action-btn{background:transparent;border:none;font-size:16px;cursor:pointer;padding:6px;border-radius:6px}
 </style>
 </head>
 <body>
@@ -175,17 +176,14 @@ let selected = new Set();
 let ocrWorker = null;
 let workerReady = false;
 
-/* Persistence */
+/* Persistence helpers */
 function safeParse(key, fallback){ try{ const v=localStorage.getItem(key); return v?JSON.parse(v):fallback }catch(e){return fallback} }
-function saveAll(){ localStorage.setItem('carbData', JSON.stringify(data)) }
+function saveAll(){ try{ localStorage.setItem('carbData', JSON.stringify(data)); }catch(e){console.error('save error',e);} }
 function loadAll(){ const s=safeParse('carbData',null); data = s && typeof s==='object' ? s : initialData; saveAll(); }
 
 /* Preset handling */
 const presetEl = document.getElementById('preset');
-function loadPreset() {
-  const p = localStorage.getItem('bb_preset') || 'Balanced';
-  presetEl.value = p;
-}
+function loadPreset() { const p = localStorage.getItem('bb_preset') || 'Balanced'; presetEl.value = p; }
 presetEl.addEventListener('change', () => {
   const v = presetEl.value;
   localStorage.setItem('bb_preset', v);
@@ -198,7 +196,7 @@ presetEl.addEventListener('change', () => {
   render();
 });
 
-/* Dual-wave computation (Balanced default) */
+/* Dual-wave computation */
 function computeDualWave(carbs, fat, protein, opts = {}) {
   const eps = 1e-4;
   const presetName = opts.preset || localStorage.getItem('bb_preset') || 'Balanced';
@@ -261,7 +259,7 @@ function render(){
       else if(rec.percent >= 30) cls = 'carb-high';
       else if(rec.percent >= 15) cls = 'carb-moderate';
       html += `<div class="item ${isSel? 'selected':''}" onclick="toggleSelect('${escapeJs(cat)}',${idx})">` +
-              `<input type="checkbox" class="item-checkbox" ${isSel? 'checked':''} onchange="toggleSelect('${escapeJs(cat)}',${idx})" onclick="event.stopPropagation()" />` +
+              `<input type="checkbox" class="item-checkbox" ${isSel? 'checked':''} onclick="event.stopPropagation(); toggleSelect('${escapeJs(cat)}',${idx})" />` +
               `<div><div class="item-name">${escapeHtml(it.name)}</div><div class="item-measure">${escapeHtml(it.measure)}</div></div>` +
               `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">` +
               `<div class="carb-badge ${cls}">${carbs}g</div>` +
@@ -379,6 +377,25 @@ saveBtn.addEventListener('click', ()=>{
   saveAll(); modal.classList.remove('active'); render();
 });
 
+/* Edit helper exposed for item actions (if needed) */
+function openEdit(cat, idx){
+  editContext = {cat, idx};
+  document.getElementById('modalTitle').innerText='Edit Food';
+  populateCategories();
+  const it = (data[cat]||[])[idx];
+  if(it){
+    nameEl.value = it.name || '';
+    measureEl.value = it.measure || '';
+    carbsEl.value = it.carbs || '';
+    fatEl.value = it.fat || '';
+    proteinEl.value = it.protein || '';
+    notesEl.value = it.notes || '';
+    categoryEl.value = cat;
+  }
+  modal.classList.add('active');
+}
+window.editItem = openEdit;
+
 /* Delete helper */
 function deleteItem(cat, idx){ if(!confirm('Delete item?')) return; data[cat].splice(idx,1); if(data[cat].length===0) delete data[cat]; saveAll(); render(); }
 window.deleteItem = deleteItem;
@@ -391,7 +408,8 @@ async function ensureWorker(){
     await ocrWorker.load(); await ocrWorker.loadLanguage('eng'); await ocrWorker.initialize('eng');
     await ocrWorker.setParameters({ tessedit_char_whitelist:'0123456789.gmper/abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ:-() ', preserve_interword_spaces:'1' });
     workerReady = true;
-  }catch(e){ console.error('worker init',e); workerReady=false; ocrStatus.className='ocr-status ocr-error'; ocrStatus.innerText='OCR init failed'; }
+    ocrStatus.style.display='block'; ocrStatus.className='ocr-status ocr-success'; ocrStatus.innerText='OCR ready';
+  }catch(e){ console.error('worker init',e); workerReady=false; ocrStatus.style.display='block'; ocrStatus.className='ocr-status ocr-error'; ocrStatus.innerText='OCR engine unavailable'; }
 }
 
 function preprocessImage(dataUrl, maxWidth=1200){
@@ -478,13 +496,15 @@ fileInput.addEventListener('change', async (ev)=>{
 scanBtn.addEventListener('click', ()=> fileInput.click());
 
 /* Initialization */
-function init(){
+async function init(){
   loadAll();
   const preset = localStorage.getItem('bb_preset') || 'Balanced';
   presetEl.value = preset;
   render();
   populateCategories();
   document.getElementById('searchInput').addEventListener('input', ()=> render());
+  // initialize OCR worker in background to reduce "unavailable" messages
+  try{ await ensureWorker(); }catch(e){ /* handled inside ensureWorker */ }
   window.addEventListener('beforeunload', async ()=>{ try{ if(ocrWorker && workerReady) await ocrWorker.terminate(); }catch(e){} });
 }
 init();
