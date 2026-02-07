@@ -86,34 +86,59 @@
             renderFoods();
         }
 
-        async function startScanner() {
+async function startScanner() {
             try {
-                camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                // We are requesting 1080p and continuous focus
+                camStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 },
+                        focusMode: 'continuous'
+                    } 
+                });
                 document.getElementById('video').srcObject = camStream;
                 document.getElementById('camera-view').style.display = 'block';
-            } catch (e) { alert("Camera error"); }
-        }
-
-        function closeScanner() {
-            if(camStream) camStream.getTracks().forEach(t => t.stop());
-            document.getElementById('camera-view').style.display = 'none';
+            } catch (e) { alert("Camera error: " + e); }
         }
 
         async function capture() {
             const v = document.getElementById('video');
             const c = document.getElementById('canvas');
-            c.width = v.videoWidth; c.height = v.videoHeight;
-            c.getContext('2d').drawImage(v, 0, 0);
+            
+            // This ensures the photo is taken at the camera's full resolution, not the screen size
+            c.width = v.videoWidth; 
+            c.height = v.videoHeight; 
+            const ctx = c.getContext('2d');
+            
+            // Draw the full-resolution image
+            ctx.drawImage(v, 0, 0);
+            
             closeScanner();
             document.getElementById('scan-loader').style.display = "flex";
+            
             try {
-                const res = await Tesseract.recognize(c, 'eng');
+                // We add 'eng' and a parameter to look for digits specifically
+                const res = await Tesseract.recognize(c, 'eng', {
+                    logger: m => console.log(m) 
+                });
+                
                 const t = res.data.text.toLowerCase();
-                const cm = t.match(/(?:carb|carbohydrate)[\s\w]*?(\d+\.?\d*)/);
-                const fm = t.match(/(?:fat)[\s\w]*?(\d+\.?\d*)/);
-                if(cm) document.getElementById('new-carbs').value = cm[1];
-                if(fm) document.getElementById('new-fat').value = fm[1];
-            } catch (e) { alert("Scan failed"); }
+                console.log("Detected Text:", t); // You can see this in your phone's debug log
+
+                // Improved matching for "Total Carbs" and "Total Fat"
+                const cm = t.match(/(?:carb|carbohydrate|total carb)[\s\w]*?(\d+\.?\d*)/);
+                const fm = t.match(/(?:fat|total fat)[\s\w]*?(\d+\.?\d*)/);
+                
+                if(cm) document.getElementById('new-carbs').value = Math.round(cm[1]);
+                if(fm) document.getElementById('new-fat').value = Math.round(fm[1]);
+                
+                if(!cm && !fm) {
+                    alert("Scan complete but no numbers found. Try holding the phone further back (about 10 inches) so the text is sharp.");
+                }
+            } catch (e) { 
+                alert("Scan failed: " + e); 
+            }
             document.getElementById('scan-loader').style.display = "none";
         }
 	lucide.createIcons();
