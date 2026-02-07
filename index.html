@@ -623,11 +623,10 @@
                 </div>
                 
 		<button type="button" class="camera-btn" onclick="document.getElementById('nativeCamera').click()">
-    		📸 Take Sharp Photo of Label
-		</button>
-		<input type="file" id="nativeCamera" accept="image/*" capture="environment" style="display:none" 			onchange="processSharpPhoto(this)">
-		<div id="ocrStatus" class="ocr-status" style="margin-top: 10px; font-size: 14px; text-align: center;"></div>
-                <div id="ocrStatus" class="ocr-status"></div>
+    📸 Take Sharp Photo of Label
+</button>
+<input type="file" id="nativeCamera" accept="image/*" capture="environment" style="display:none" onchange="processSharpPhoto(this)">
+<div id="ocrStatus" class="ocr-status" style="display:block; margin-top: 10px; font-weight: bold; min-height: 20px; text-align: center;"></div>
                 
                 <button type="button" class="calc-toggle" id="calcToggle">🧮 Use Calculator (from 100g label)</button>
                 
@@ -1049,7 +1048,9 @@
             
             const file = input.files[0];
             const statusDiv = document.getElementById('ocrStatus');
-            statusDiv.textContent = '🔍 Reading high-quality image... please wait.';
+            
+            // UI Feedback
+            statusDiv.textContent = '🔍 Reading image... 0%';
             statusDiv.style.color = 'var(--primary)';
             
             try {
@@ -1063,29 +1064,36 @@
                 
                 const text = result.data.text.toLowerCase().replace(/\s+/g, ' ').replace(/[,]/g, '.');
                 
-                // Search for numbers
+                // Search for nutrition keywords
                 const carbMatch = text.match(/(?:carb|carbohydrate|total carb)[\s\w]*?(\d+\.?\d*)/);
                 const fatMatch = text.match(/(?:fat|total fat)[\s\w]*?(\d+\.?\d*)/);
                 
                 if (carbMatch || fatMatch) {
-                    if (carbMatch) document.getElementById('carbsPer100g').value = carbMatch[1];
-                    if (fatMatch) document.getElementById('fatPer100g').value = fatMatch[1];
+                    // Fill both the main form and the calculator for convenience
+                    if (carbMatch) {
+                        document.getElementById('carbsPer100g').value = carbMatch[1];
+                        document.getElementById('carbs').value = carbMatch[1];
+                    }
+                    if (fatMatch) {
+                        document.getElementById('fatPer100g').value = fatMatch[1];
+                        document.getElementById('fat').value = fatMatch[1];
+                    }
                     
-                    // Show Calculator
+                    // Force the calculator to show so you can adjust for serving size
                     document.getElementById('calculator').classList.remove('hidden');
                     document.getElementById('calcToggle').textContent = '✖️ Close Calculator';
                     
-                    statusDiv.textContent = '✓ Scan successful!';
+                    statusDiv.textContent = '✅ Found values! Check calculator below.';
                     statusDiv.style.color = 'green';
                 } else {
-                    statusDiv.textContent = '⚠️ No numbers found. Try a clearer photo.';
+                    statusDiv.textContent = '⚠️ Could not find "Carbohydrate" or "Fat" text.';
                     statusDiv.style.color = 'orange';
                 }
             } catch (err) {
-                statusDiv.textContent = '❌ Error reading label.';
+                statusDiv.textContent = '❌ Error: Try a clearer photo.';
                 statusDiv.style.color = 'red';
             }
-            input.value = ''; // Reset for next time
+            input.value = ''; 
         }
 
         // Calculator functionality
