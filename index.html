@@ -7,10 +7,8 @@
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  :root{
-    --primary:#1a472a;--accent:#5f9767;--bg:#fafbf9;--surface:#fff;--text:#2a3b2e;--muted:#5a6b5e;--border:#dfe6e0;--danger:#c93a3a;
-  }
-  body{font-family:-apple-system,system-ui,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text);padding-bottom:120px}
+  :root{--primary:#1a472a;--accent:#5f9767;--bg:#fafbf9;--surface:#fff;--text:#2a3b2e;--muted:#5a6b5e;--border:#dfe6e0;--danger:#c93a3a}
+  body{font-family:-apple-system,system-ui,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text);padding-bottom:140px}
   .header{background:var(--primary);color:#fff;padding:12px 16px;position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between}
   .header-left{display:flex;align-items:center;gap:12px}
   h1{font-size:18px;margin-right:6px}
@@ -35,7 +33,7 @@
   .item-actions{display:flex;gap:8px}
   .btn{padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
   .fab{position:fixed;right:20px;bottom:20px;width:56px;height:56px;border-radius:50%;background:var(--primary);color:#fff;border:none;font-size:24px;z-index:200}
-  .meal-total{position:fixed;right:20px;bottom:96px;padding:14px 18px;border-radius:12px;min-width:220px;box-shadow:0 8px 24px rgba(0,0,0,0.2);z-index:150;display:none;border:2px solid rgba(0,0,0,0.06);color:#fff}
+  .meal-total{position:fixed;right:20px;bottom:96px;padding:14px 18px;border-radius:12px;min-width:260px;box-shadow:0 8px 24px rgba(0,0,0,0.2);z-index:150;display:none;border:2px solid rgba(0,0,0,0.06);color:#fff}
   .meal-total.show{display:block}
   .meal-color-low{background:linear-gradient(90deg,#5f9767,#4f8a5b);border-color:#4f8a5b}
   .meal-color-moderate{background:linear-gradient(90deg,#e8a647,#d79a3f);border-color:#d79a3f}
@@ -43,6 +41,9 @@
   .meal-color-very{background:linear-gradient(90deg,#d95d47,#c84b36);border-color:#c84b36}
   .meal-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-weight:700}
   .bolus-info{margin-top:8px;background:rgba(255,255,255,0.06);padding:8px;border-radius:8px;color:#fff}
+  .selected-list{margin-top:8px;max-height:160px;overflow:auto;background:rgba(255,255,255,0.06);padding:8px;border-radius:8px}
+  .selected-item{display:flex;justify-content:space-between;align-items:center;padding:6px;border-radius:6px}
+  .selected-item .remove-btn{background:transparent;border:none;color:#fff;cursor:pointer;padding:6px;border-radius:6px}
   .modal{position:fixed;inset:0;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;z-index:300;padding:12px}
   .modal.active{display:flex}
   .modal-content{background:var(--surface);border-radius:12px;padding:16px;max-width:520px;width:100%;max-height:86vh;overflow:auto}
@@ -91,6 +92,7 @@
     <div id="bolusBlock" class="bolus-info hidden">
       <div id="bolusText" style="font-weight:800"></div>
       <div class="small-muted" style="margin-top:6px">Fat: <span id="totalFat">0g</span> · Protein: <span id="totalProtein">0g</span></div>
+      <div class="selected-list" id="selectedList"></div>
     </div>
   </div>
 
@@ -183,7 +185,6 @@ function loadAll(){ const s=safeParse('carbData',null); data = s && typeof s==='
 
 /* Preset handling */
 const presetEl = document.getElementById('preset');
-function loadPreset() { const p = localStorage.getItem('bb_preset') || 'Balanced'; presetEl.value = p; }
 presetEl.addEventListener('change', () => {
   const v = presetEl.value;
   localStorage.setItem('bb_preset', v);
@@ -254,6 +255,9 @@ function render(){
       const fat = Number(it.fat||0);
       const protein = Number(it.protein||0);
       const rec = computeDualWave(carbs, fat, protein);
+      // compute now/later split for display: now = 100 - extendedPercent, later = extendedPercent
+      const later = rec.percent;
+      const now = Math.max(0, 100 - later);
       let cls = 'carb-low';
       if(rec.percent >= 50) cls = 'carb-very';
       else if(rec.percent >= 30) cls = 'carb-high';
@@ -263,7 +267,11 @@ function render(){
               `<div><div class="item-name">${escapeHtml(it.name)}</div><div class="item-measure">${escapeHtml(it.measure)}</div></div>` +
               `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">` +
               `<div class="carb-badge ${cls}">${carbs}g</div>` +
-              `<div class="small-muted" style="font-size:12px">${rec.percent}% · ${rec.duration}h</div>` +
+              `<div class="small-muted" style="font-size:12px">Now ${now}% · Later ${later}%</div>` +
+              `<div style="margin-top:6px;display:flex;gap:6px">` +
+              `<button class="item-action-btn" title="Edit" onclick="event.stopPropagation(); openEdit('${escapeJs(cat)}',${idx})">✎</button>` +
+              `<button class="item-action-btn" title="Delete" onclick="event.stopPropagation(); deleteItem('${escapeJs(cat)}',${idx})">🗑</button>` +
+              `</div>` +
               `</div></div>`;
     });
     html += `</div></section>`;
@@ -281,10 +289,12 @@ function toggleSelect(cat, idx){
 }
 function clearSelection(){ selected.clear(); render(); }
 
-/* Meal panel with color mapping */
+/* Meal panel with color mapping and selected list with remove buttons */
 function updateMealPanel(){
   const mealEl = document.getElementById('mealTotal');
   const bolusBlock = document.getElementById('bolusBlock');
+  const selectedList = document.getElementById('selectedList');
+  selectedList.innerHTML = '';
   if(selected.size === 0){
     mealEl.className = 'meal-total';
     mealEl.classList.remove('show');
@@ -296,7 +306,8 @@ function updateMealPanel(){
     return;
   }
   let tc=0, tf=0, tp=0;
-  selected.forEach(id=>{
+  const entries = Array.from(selected);
+  entries.forEach(id=>{
     const [cat, idx] = id.split('::');
     const it = (data[cat]||[])[Number(idx)];
     if(it){ tc += Number(it.carbs||0); tf += Number(it.fat||0); tp += Number(it.protein||0); }
@@ -305,7 +316,9 @@ function updateMealPanel(){
   document.getElementById('totalFat').innerText = tf.toFixed(1)+'g';
   document.getElementById('totalProtein').innerText = tp.toFixed(1)+'g';
   const rec = computeDualWave(tc, tf, tp);
-  document.getElementById('bolusText').innerText = rec.percent === 0 ? 'Standard' : `Dual‑Wave ${rec.percent}% · ${rec.duration}h`;
+  const later = rec.percent;
+  const now = Math.max(0, 100 - later);
+  document.getElementById('bolusText').innerText = rec.percent === 0 ? 'Standard' : `Now ${now}% · Later ${later}% · ${rec.duration}h`;
   bolusBlock.classList.remove('hidden');
   mealEl.classList.add('show');
   mealEl.classList.remove('meal-color-low','meal-color-moderate','meal-color-high','meal-color-very');
@@ -313,6 +326,27 @@ function updateMealPanel(){
   else if(rec.percent >= 30) mealEl.classList.add('meal-color-high');
   else if(rec.percent >= 15) mealEl.classList.add('meal-color-moderate');
   else mealEl.classList.add('meal-color-low');
+
+  // build selected list with remove buttons and per-item now/later
+  entries.forEach(id=>{
+    const [cat, idx] = id.split('::');
+    const it = (data[cat]||[])[Number(idx)];
+    if(!it) return;
+    const carbs = Number(it.carbs||0), fat = Number(it.fat||0), protein = Number(it.protein||0);
+    const recItem = computeDualWave(carbs, fat, protein);
+    const laterItem = recItem.percent;
+    const nowItem = Math.max(0, 100 - laterItem);
+    const div = document.createElement('div');
+    div.className = 'selected-item';
+    div.innerHTML = `<div style="display:flex;flex-direction:column"><div style="font-weight:700">${escapeHtml(it.name)}</div><div class="small-muted" style="font-size:12px">${carbs}g · Now ${nowItem}% · Later ${laterItem}%</div></div>` +
+                    `<div><button class="remove-btn" title="Remove" onclick="event.stopPropagation(); removeSelected('${escapeJs(id)}')">✖</button></div>`;
+    selectedList.appendChild(div);
+  });
+}
+
+function removeSelected(id){
+  selected.delete(id);
+  render();
 }
 
 /* Modal and form wiring */
@@ -377,7 +411,7 @@ saveBtn.addEventListener('click', ()=>{
   saveAll(); modal.classList.remove('active'); render();
 });
 
-/* Edit helper exposed for item actions (if needed) */
+/* Edit helper exposed for item actions */
 function openEdit(cat, idx){
   editContext = {cat, idx};
   document.getElementById('modalTitle').innerText='Edit Food';
@@ -394,7 +428,7 @@ function openEdit(cat, idx){
   }
   modal.classList.add('active');
 }
-window.editItem = openEdit;
+window.openEdit = openEdit;
 
 /* Delete helper */
 function deleteItem(cat, idx){ if(!confirm('Delete item?')) return; data[cat].splice(idx,1); if(data[cat].length===0) delete data[cat]; saveAll(); render(); }
@@ -441,12 +475,12 @@ async function runOcr(dataUrl){
     const pre = await preprocessImage(dataUrl, 1200);
     ocrStatus.className='ocr-status'; ocrStatus.innerText='Scanning...';
     const { data: { text } } = await ocrWorker.recognize(pre);
-    ocrStatus.className='ocr-status ocr-success'; ocrStatus.innerText='Parsing label';
-    parseLabelText(text);
+    ocrStatus.className='ocr-status'; ocrStatus.innerText='OCR complete — parsing';
+    parseLabelText(text || '');
   }catch(e){ console.error('ocr',e); ocrStatus.className='ocr-status ocr-error'; ocrStatus.innerText='OCR failed — try a clearer photo'; }
 }
 
-/* parse label text for per-100g carbs/fat/protein and serving */
+/* parse label text for per-100g carbs/fat/protein and serving with fallbacks */
 function parseLabelText(text){
   const lower = (text||'').replace(/\r/g,'\n');
   let c100=null,f100=null,p100=null,serv=null;
@@ -463,6 +497,24 @@ function parseLabelText(text){
   const servParen = /\((\d+\.?\d*)\s*g\)/i;
   const servSimple = /(\d+\.?\d*)\s*g\s*(?:serving|serv)/i;
   const mS = lower.match(servRegex) || lower.match(servParen) || lower.match(servSimple); if(mS) serv = mS[1];
+
+  // fallback: find numbers with 'g' anywhere and assign first three to carbs/fat/protein if labeled not found
+  if((!c100 || !f100 || !p100) && lower.match(/\d+\.?\d*\s*g/gi)){
+    const allG = Array.from(lower.matchAll(/(\d+\.?\d*)\s*g/gi)).map(m=>m[1]);
+    if(allG.length>0 && !c100) c100 = allG[0];
+    if(allG.length>1 && !f100) f100 = allG[1];
+    if(allG.length>2 && !p100) p100 = allG[2];
+  }
+
+  // fallback: numbers without g (rare) - take first three numbers
+  if((!c100 || !f100 || !p100) && lower.match(/(\d+\.?\d*)/g)){
+    const nums = Array.from(lower.matchAll(/(\d+\.?\d*)/g)).map(m=>m[1]);
+    if(nums.length>0 && !c100) c100 = nums[0];
+    if(nums.length>1 && !f100) f100 = nums[1];
+    if(nums.length>2 && !p100) p100 = nums[2];
+  }
+
+  // if per-serving values exist and serving weight present, compute per-100
   if(serv && (!c100 || !f100 || !p100)){
     const carbServ = /(?:carb|carbohydrate|carbs)[^\d\n\r]{0,40}?(\d+\.?\d*)\s*g(?!\s*\/\s*100g)/i;
     const fatServ = /(?:fat|total fat)[^\d\n\r]{0,40}?(\d+\.?\d*)\s*g(?!\s*\/\s*100g)/i;
@@ -473,12 +525,24 @@ function parseLabelText(text){
     if(fm && !f100 && sv>0) f100 = ((parseFloat(fm[1]) / sv) * 100).toFixed(1);
     if(pm && !p100 && sv>0) p100 = ((parseFloat(pm[1]) / sv) * 100).toFixed(1);
   }
+
+  // populate fields
   if(c100) c100El.value = parseFloat(c100).toFixed(1);
   if(f100) f100El.value = parseFloat(f100).toFixed(1);
   if(p100) p100El.value = parseFloat(p100).toFixed(1);
   if(serv) servingEl.value = parseFloat(serv).toFixed(0);
+
+  // enable apply if we have serving and carbs per100
   applyCalcBtn.disabled = !(parseFloat(servingEl.value) > 0 && parseFloat(c100El.value) > 0);
-  ocrStatus.className='ocr-status ocr-success'; ocrStatus.innerText='OCR parsed values (if found)';
+
+  // final status
+  if(c100 || f100 || p100) {
+    ocrStatus.className='ocr-status ocr-success active';
+    ocrStatus.innerText = 'OCR parsed values (populated where found)';
+  } else {
+    ocrStatus.className='ocr-status ocr-error active';
+    ocrStatus.innerText = 'No clear nutrition values found. Try a different photo or use calculator';
+  }
 }
 
 /* file input handling */
@@ -503,8 +567,8 @@ async function init(){
   render();
   populateCategories();
   document.getElementById('searchInput').addEventListener('input', ()=> render());
-  // initialize OCR worker in background to reduce "unavailable" messages
-  try{ await ensureWorker(); }catch(e){ /* handled inside ensureWorker */ }
+  // warm up OCR worker in background to reduce "unavailable" messages
+  ensureWorker().catch(()=>{/* handled in ensureWorker */});
   window.addEventListener('beforeunload', async ()=>{ try{ if(ocrWorker && workerReady) await ocrWorker.terminate(); }catch(e){} });
 }
 init();
