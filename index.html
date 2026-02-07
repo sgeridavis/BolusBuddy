@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#1a472a">
     <title>Carb Tracker</title>
-    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js'></script>
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
     <style>
         * {
             margin: 0;
@@ -173,15 +173,6 @@
             font-size: 16px;
             text-align: center;
             min-width: 55px;
-        }
-
-        .carbs-badge {
-            background: var(--accent);
-            color: white;
-        }
-
-        .fat-badge {
-            background: #f59e42;
             color: white;
         }
 
@@ -244,7 +235,7 @@
             min-width: 240px;
             z-index: 100;
             transform: translateY(150%);
-            transition: transform 0.3s ease;
+            transition: transform 0.3s ease, background 0.3s ease;
             border: 2px solid rgba(255,255,255,0.2);
         }
 
@@ -352,7 +343,7 @@
             padding: 24px;
             max-width: 500px;
             width: 100%;
-            max-height: 80vh;
+            max-height: 85vh;
             overflow-y: auto;
         }
 
@@ -484,6 +475,7 @@
             border-radius: 8px;
             margin-top: 12px;
             display: none;
+            background: #000;
         }
 
         .camera-preview.active {
@@ -511,6 +503,25 @@
 
         .ocr-status.error {
             background: #c93a3a;
+        }
+
+        .ocr-debug {
+            background: #2a3b2e;
+            color: #5f9767;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 12px;
+            font-size: 11px;
+            font-family: monospace;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .ocr-debug.active {
+            display: block;
         }
 
         .hidden {
@@ -578,37 +589,13 @@
         <div class="modal-content">
             <div class="modal-header" id="modalTitle">Add New Food</div>
             <form id="addForm">
+                <input type="hidden" id="editCategory">
+                <input type="hidden" id="editIndex">
+                
                 <div class="form-group">
-                    <button type="button" class="camera-btn" onclick="document.getElementById('nativeCamera').click()">
-                        📸 Take Sharp Photo of Label
-                    </button>
-                    <input type="file" id="nativeCamera" accept="image/*" capture="environment" style="display:none" onchange="processSharpPhoto(this)">
-                    <div id="ocrStatus" class="ocr-status" style="display:block; margin-top: 10px; font-weight: bold; text-align: center; min-height: 20px; white-space: pre-wrap; color: var(--primary);"></div>
-                <button type="button" class="calc-toggle" id="calcToggle">🧮 Use Calculator (from 100g label)</button>
-
-                <div id="calculator" class="calculator hidden">
-                    <div class="calc-header">100g Label Details:</div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Carbs/100g</label>
-                            <input type="number" step="0.1" class="form-input" id="carbsPer100g" placeholder="0">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Fat/100g</label>
-                            <input type="number" step="0.1" class="form-input" id="fatPer100g" placeholder="0">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Your Serving Weight (g)</label>
-                        <input type="number" class="form-input" id="servingWeight" placeholder="e.g. 50">
-                    </div>
-                    <div id="calcResult" class="calc-result"></div>
-                    <button type="button" id="applyCalc" class="camera-btn" style="background: var(--primary); margin-top: 10px;" disabled>Apply Values</button>
-                </div>
-
-                <div class="form-group" style="margin-top: 20px;">
                     <label class="form-label">Category</label>
-                    <select class="form-select" id="categorySelect">
+                    <select class="form-select" id="categorySelect" required>
+                        <option value="">Select category...</option>
                         <option value="Cereal/Breakfasts">Cereal/Breakfasts</option>
                         <option value="Biscuits/Cakes">Biscuits/Cakes</option>
                         <option value="Dinners">Dinners</option>
@@ -616,25 +603,25 @@
                         <option value="Veges/Rice">Veges/Rice</option>
                         <option value="Crackers">Crackers</option>
                         <option value="Lollies/Misc">Lollies/Misc</option>
-                        <option value="Custom">+ Add New Category...</option>
+                        <option value="Custom">+ New Category</option>
                     </select>
                 </div>
-
-                <div id="customCategoryGroup" class="form-group hidden">
+                
+                <div class="form-group hidden" id="customCategoryGroup">
                     <label class="form-label">New Category Name</label>
-                    <input type="text" class="form-input" id="customCategory" placeholder="Enter category name">
+                    <input type="text" class="form-input" id="customCategory">
                 </div>
-
+                
                 <div class="form-group">
                     <label class="form-label">Food Name</label>
                     <input type="text" class="form-input" id="foodName" required>
                 </div>
-
+                
                 <div class="form-group">
-                    <label class="form-label">Measure (e.g. 1 cup, 2 biscuits)</label>
+                    <label class="form-label">Measure (e.g., 1/2C, 100g)</label>
                     <input type="text" class="form-input" id="measure" required>
                 </div>
-
+                
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Carbs (g)</label>
@@ -645,14 +632,40 @@
                         <input type="number" step="0.1" class="form-input" id="fat" required>
                     </div>
                 </div>
-
+                
+                <button type="button" class="camera-btn" id="scanLabel">📷 Scan Nutrition Label</button>
+                <video id="cameraPreview" class="camera-preview" autoplay playsinline></video>
+                <canvas id="cameraCanvas" style="display:none;"></canvas>
+                <div id="ocrStatus" class="ocr-status"></div>
+                <div id="ocrDebug" class="ocr-debug"></div>
+                
+                <button type="button" class="calc-toggle" id="calcToggle">🧮 Use Calculator (from 100g label)</button>
+                
+                <div class="calculator hidden" id="calculator">
+                    <div class="calc-header">Nutrition Label Calculator</div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Carbs per 100g</label>
+                            <input type="number" step="0.1" class="form-input" id="carbsPer100g">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Fat per 100g</label>
+                            <input type="number" step="0.1" class="form-input" id="fatPer100g">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Actual serving weight (g)</label>
+                        <input type="number" step="0.1" class="form-input" id="servingWeight">
+                    </div>
+                    <div class="calc-result" id="calcResult"></div>
+                    <button type="button" class="btn btn-primary" id="applyCalc" style="width: 100%; margin-top: 8px;">Apply Values</button>
+                </div>
+                
                 <div class="form-group">
                     <label class="form-label">Notes (optional)</label>
                     <input type="text" class="form-input" id="notes">
                 </div>
-
-                <input type="hidden" id="editCategory">
-                <input type="hidden" id="editIndex">
+                
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" id="cancelButton">Cancel</button>
                     <button type="submit" class="btn btn-primary" id="submitButton">Add Food</button>
@@ -762,24 +775,19 @@
         let allData = {};
         let selectedItems = new Set();
         let cameraStream = null;
+        let isProcessing = false;
         
-        // Color coding based on fat ratio
         function getFatRatioColor(carbs, fat) {
             const ratio = fat / carbs;
-            if (ratio < 0.3) {
-                return '#5f9767'; // Green - standard bolus
-            } else if (ratio < 0.5) {
-                return '#e8a647'; // Yellow/orange - dual wave 70/30
-            } else if (ratio < 0.8) {
-                return '#e87d47'; // Orange - dual wave 50/50
-            } else {
-                return '#d95d47'; // Red/orange - dual wave 40/60
-            }
+            if (ratio < 0.3) return '#5f9767';
+            else if (ratio < 0.5) return '#e8a647';
+            else if (ratio < 0.8) return '#e87d47';
+            else return '#d95d47';
         }
         
         function loadData() {
             const saved = localStorage.getItem('carbData');
-            if (false) {
+            if (saved) {
                 allData = JSON.parse(saved);
             } else {
                 allData = initialData;
@@ -834,7 +842,7 @@
                                     </div>
                                 </div>
                                 <div class="item-nutrition">
-                                    <div class="nutrition-badge carbs-badge" style="background: ${getFatRatioColor(item.carbs, item.fat)}">
+                                    <div class="nutrition-badge" style="background: ${getFatRatioColor(item.carbs, item.fat)}">
                                         ${item.carbs}
                                         <span class="nutrition-label">carbs</span>
                                     </div>
@@ -847,16 +855,12 @@
                         `;
                     });
 
-                    html += `
-                            </div>
-                        </div>
-                    `;
+                    html += `</div></div>`;
                 }
             });
 
             if (html === '') {
                 html = `<div class="empty-state">🔍<br>No foods found</div>`;
-                totalItems = 0;
             }
 
             content.innerHTML = html;
@@ -905,43 +909,38 @@
             document.getElementById('totalFat').textContent = totalFat.toFixed(1) + 'g';
             
             const mealTotal = document.getElementById('mealTotal');
-            
-            // Calculate dual wave recommendations
             const bolusInfo = document.getElementById('bolusInfo');
+            
             if (totalCarbs > 0) {
                 const fatToCarb = totalFat / totalCarbs;
                 const fatRatioPercent = (fatToCarb * 100).toFixed(0);
                 
                 document.getElementById('fatRatio').textContent = `${fatRatioPercent}%`;
                 
-                let recommendation = '';
-                let split = '';
-                let duration = '';
-                let panelColor = '';
+                let recommendation = '', split = '', duration = '', panelColor = '';
                 
                 if (fatToCarb < 0.3) {
                     recommendation = '✓ Standard Bolus';
                     split = '100% upfront';
                     duration = '';
-                    panelColor = '#5f9767'; // Green
+                    panelColor = '#5f9767';
                 } else if (fatToCarb < 0.5) {
                     recommendation = '⚡ Dual Wave 70/30';
                     split = '70% now / 30% extended';
                     duration = '2-3 hours';
-                    panelColor = '#e8a647'; // Yellow/orange
+                    panelColor = '#e8a647';
                 } else if (fatToCarb < 0.8) {
                     recommendation = '⚡ Dual Wave 50/50';
                     split = '50% now / 50% extended';
                     duration = '3-4 hours';
-                    panelColor = '#e87d47'; // Orange
+                    panelColor = '#e87d47';
                 } else {
                     recommendation = '⚡ Dual Wave 40/60';
                     split = '40% now / 60% extended';
                     duration = '4-6 hours';
-                    panelColor = '#d95d47'; // Red/orange
+                    panelColor = '#d95d47';
                 }
                 
-                // Change panel background color
                 mealTotal.style.background = panelColor;
                 
                 document.getElementById('bolusRecommendation').innerHTML = 
@@ -949,7 +948,7 @@
                 bolusInfo.style.display = 'block';
             } else {
                 bolusInfo.style.display = 'none';
-                mealTotal.style.background = ''; // Reset to default
+                mealTotal.style.background = '';
             }
             
             if (selectedItems.size > 0) {
@@ -987,11 +986,9 @@
             const item = allData[category][index];
             if (confirm(`Delete "${item.name}"?`)) {
                 allData[category].splice(index, 1);
-                
                 if (allData[category].length === 0) {
                     delete allData[category];
                 }
-                
                 saveData();
                 renderData(document.getElementById('searchInput').value);
             }
@@ -1021,7 +1018,9 @@
             calcResult.classList.remove('show');
             document.getElementById('editCategory').value = '';
             document.getElementById('editIndex').value = '';
-            
+            document.getElementById('ocrDebug').classList.remove('active');
+            document.getElementById('ocrStatus').classList.remove('active');
+            stopCamera();
         }
 
         cancelButton.addEventListener('click', closeModal);
@@ -1040,51 +1039,165 @@
             }
         });
 
-async function processSharpPhoto(input) {
-            if (!input.files || !input.files[0]) return;
-            const statusDiv = document.getElementById('ocrStatus');
-            statusDiv.textContent = '🔍 Reading image... 0%';
+        // CAMERA AND OCR
+        const scanLabelBtn = document.getElementById('scanLabel');
+        const cameraPreview = document.getElementById('cameraPreview');
+        const cameraCanvas = document.getElementById('cameraCanvas');
+        const ocrStatus = document.getElementById('ocrStatus');
+        const ocrDebug = document.getElementById('ocrDebug');
+
+        scanLabelBtn.addEventListener('click', async () => {
+            if (isProcessing) return;
             
-            try {
-                const result = await Tesseract.recognize(input.files[0], 'eng', {
-                    logger: m => { if (m.status === 'recognizing text') statusDiv.textContent = `🔍 Reading... ${Math.round(m.progress * 100)}%`; }
-                });
-                
-                // Clean text: remove commas, lowercase everything
-                const text = result.data.text.toLowerCase().replace(/[,]/g, '.');
-                console.log("Full Text:", text);
-
-                // This "Super-Search" looks for common label variations
-                const carbMatch = text.match(/(?:carb|carbohydrate|total carb|total carbohydrate|avail\. carb)[\s\w\(\)\.]*?(\d+\.?\d*)/);
-                const fatMatch = text.match(/(?:fat|total fat|lipid)[\s\w\(\)\.]*?(\d+\.?\d*)/);
-
-                if (carbMatch || fatMatch) {
-                    if (carbMatch) {
-                        document.getElementById('carbs').value = carbMatch[1];
-                        document.getElementById('carbsPer100g').value = carbMatch[1];
-                    }
-                    if (fatMatch) {
-                        document.getElementById('fat').value = fatMatch[1];
-                        document.getElementById('fatPer100g').value = fatMatch[1];
-                    }
-                    statusDiv.textContent = '✅ Success! Numbers filled.';
-                    statusDiv.style.color = 'green';
-                    
-                    // Open calculator automatically
-                    document.getElementById('calculator').classList.remove('hidden');
-                    document.getElementById('calcToggle').textContent = '✖️ Close Calculator';
-                } else {
-                    statusDiv.textContent = '⚠️ Text read, but keywords like "Carb" not found.\nTry a clearer photo of the 100g column.';
-                    statusDiv.style.color = 'orange';
-                }
-            } catch (err) {
-                statusDiv.textContent = '❌ Error processing image.';
-                statusDiv.style.color = 'red';
+            if (cameraStream) {
+                await captureAndProcess();
+            } else {
+                await startCamera();
             }
-            input.value = ''; 
+        });
+
+        async function startCamera() {
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 2560 },
+                        height: { ideal: 1440 }
+                    }
+                });
+                cameraPreview.srcObject = cameraStream;
+                cameraPreview.classList.add('active');
+                scanLabelBtn.textContent = '📸 Capture & Read Label';
+                scanLabelBtn.style.background = '#c93a3a';
+                showOCRStatus('📷 Camera ready - position nutrition label clearly', '');
+            } catch (err) {
+                showOCRStatus('❌ Camera permission denied', 'error');
+            }
         }
 
-        // Calculator functionality
+        async function captureAndProcess() {
+            if (isProcessing) return;
+            
+            isProcessing = true;
+            showOCRStatus('📸 Capturing...', '');
+            
+            const context = cameraCanvas.getContext('2d');
+            cameraCanvas.width = cameraPreview.videoWidth;
+            cameraCanvas.height = cameraPreview.videoHeight;
+            context.drawImage(cameraPreview, 0, 0);
+            
+            stopCamera();
+            scanLabelBtn.disabled = true;
+            
+            showOCRStatus('🔍 Reading text... (15-30 seconds)', '');
+            
+            try {
+                const worker = await Tesseract.createWorker('eng');
+                
+                const { data: { text } } = await worker.recognize(cameraCanvas);
+                
+                await worker.terminate();
+                
+                ocrDebug.textContent = '=== TEXT DETECTED ===\n' + text + '\n=== END ===';
+                ocrDebug.classList.add('active');
+                
+                const nutrition = parseNutritionLabel(text);
+                
+                if (nutrition.carbs || nutrition.fat) {
+                    if (nutrition.carbs) {
+                        document.getElementById('carbsPer100g').value = nutrition.carbs;
+                    }
+                    if (nutrition.fat) {
+                        document.getElementById('fatPer100g').value = nutrition.fat;
+                    }
+                    
+                    if (calculator.classList.contains('hidden')) {
+                        calculator.classList.remove('hidden');
+                        calcToggle.textContent = '✖️ Close Calculator';
+                    }
+                    
+                    let found = [];
+                    if (nutrition.carbs) found.push(`${nutrition.carbs}g carbs`);
+                    if (nutrition.fat) found.push(`${nutrition.fat}g fat`);
+                    
+                    showOCRStatus(`✓ Found: ${found.join(', ')} per 100g`, 'success');
+                } else {
+                    showOCRStatus('⚠️ No values detected - check debug panel below', 'error');
+                }
+                
+            } catch (error) {
+                showOCRStatus('❌ OCR failed - ' + error.message, 'error');
+            }
+            
+            isProcessing = false;
+            scanLabelBtn.disabled = false;
+            scanLabelBtn.textContent = '📷 Scan Nutrition Label';
+        }
+
+        function parseNutritionLabel(text) {
+            const result = { carbs: null, fat: null };
+            
+            const normalized = text
+                .toLowerCase()
+                .replace(/[,''`]/g, '')
+                .replace(/\s+/g, ' ')
+                .replace(/[o]/gi, '0')
+                .replace(/[il]/g, '1');
+            
+            // Look for patterns
+            const lines = normalized.split(/[\n\r]+/);
+            
+            for (const line of lines) {
+                // Carbs - look for line containing carb keywords
+                if (!result.carbs && /carb|carbohydrate|cho/i.test(line)) {
+                    // Extract any number from this line
+                    const nums = line.match(/\d+\.?\d*/g);
+                    if (nums) {
+                        for (const num of nums) {
+                            const val = parseFloat(num);
+                            if (val > 0 && val <= 100) {
+                                result.carbs = val;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                // Fat - but not saturated fat
+                if (!result.fat && /\bfat\b/i.test(line) && !/saturated|sat\./i.test(line)) {
+                    const nums = line.match(/\d+\.?\d*/g);
+                    if (nums) {
+                        for (const num of nums) {
+                            const val = parseFloat(num);
+                            if (val >= 0 && val <= 100) {
+                                result.fat = val;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            return result;
+        }
+
+        function showOCRStatus(message, type) {
+            ocrStatus.textContent = message;
+            ocrStatus.className = 'ocr-status active';
+            if (type) ocrStatus.classList.add(type);
+        }
+
+        function stopCamera() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+                cameraPreview.classList.remove('active');
+                scanLabelBtn.textContent = '📷 Scan Nutrition Label';
+                scanLabelBtn.style.background = '';
+            }
+        }
+
+        // Calculator
         const calcToggle = document.getElementById('calcToggle');
         const calculator = document.getElementById('calculator');
         const carbsPer100g = document.getElementById('carbsPer100g');
@@ -1095,11 +1208,8 @@ async function processSharpPhoto(input) {
 
         calcToggle.addEventListener('click', () => {
             calculator.classList.toggle('hidden');
-            if (!calculator.classList.contains('hidden')) {
-                calcToggle.textContent = '✖️ Close Calculator';
-            } else {
-                calcToggle.textContent = '🧮 Use Calculator (from 100g label)';
-            }
+            calcToggle.textContent = calculator.classList.contains('hidden') ? 
+                '🧮 Use Calculator (from 100g label)' : '✖️ Close Calculator';
         });
 
         function calculateNutrition() {
@@ -1133,8 +1243,7 @@ async function processSharpPhoto(input) {
                 document.getElementById('carbs').value = result.carbs;
                 document.getElementById('fat').value = result.fat;
                 
-                const currentMeasure = document.getElementById('measure').value;
-                if (!currentMeasure) {
+                if (!document.getElementById('measure').value) {
                     document.getElementById('measure').value = `${servingWeight.value}g`;
                 }
                 
@@ -1169,30 +1278,20 @@ async function processSharpPhoto(input) {
             const editIndex = document.getElementById('editIndex').value;
 
             if (editCategory && editIndex !== '') {
-                const oldCategory = editCategory;
-                const index = parseInt(editIndex);
-                
-                allData[oldCategory].splice(index, 1);
-                if (allData[oldCategory].length === 0) {
-                    delete allData[oldCategory];
+                allData[editCategory].splice(parseInt(editIndex), 1);
+                if (allData[editCategory].length === 0) {
+                    delete allData[editCategory];
                 }
-                
-                if (!allData[category]) {
-                    allData[category] = [];
-                }
-                allData[category].push(newItem);
-                allData[category].sort((a, b) => a.name.localeCompare(b.name));
-            } else {
-                if (!allData[category]) {
-                    allData[category] = [];
-                }
-                allData[category].push(newItem);
-                allData[category].sort((a, b) => a.name.localeCompare(b.name));
             }
+            
+            if (!allData[category]) {
+                allData[category] = [];
+            }
+            allData[category].push(newItem);
+            allData[category].sort((a, b) => a.name.localeCompare(b.name));
             
             saveData();
             renderData(document.getElementById('searchInput').value);
-            
             closeModal();
             
             addButton.textContent = '✓';
