@@ -3,146 +3,1401 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>BolusBuddy Pro</title>
-    
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-
+    <meta name="theme-color" content="#1a472a">
+    <title>Carb Tracker</title>
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js'></script>
     <style>
-        :root { --primary: #2563eb; --bg: #f8fafc; --card: #ffffff; }
-        body { font-family: -apple-system, system-ui, sans-serif; margin: 0; background: var(--bg); color: #1e293b; padding-bottom: 50px; }
-        .header { background: white; padding: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center; position: sticky; top: 0; z-index: 10; }
-        .container { padding: 15px; max-width: 500px; margin: 0 auto; }
-        .input-group { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
-        .btn { width: 100%; padding: 14px; border-radius: 8px; border: none; font-weight: 600; font-size: 16px; cursor: pointer; margin-top: 10px; }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-scan { background: #64748b; color: white; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .food-card { background: var(--card); margin-bottom: 12px; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
-        #camera-view { position: fixed; inset: 0; background: black; display: none; z-index: 1000; }
-        #video { width: 100%; height: 100%; object-fit: cover; }
-        .cam-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 80%; height: 30%; border: 2px solid #fff; border-radius: 10px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.5); pointer-events: none; }
-        .cam-buttons { position: absolute; bottom: 40px; width: 100%; display: flex; justify-content: space-evenly; align-items: center; }
-        .capture-btn { width: 75px; height: 75px; background: white; border-radius: 50%; border: 5px solid rgba(255,255,255,0.3); }
-        #scan-loader { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.9); color: white; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #1a472a;
+            --primary-light: #2d6b45;
+            --accent: #5f9767;
+            --bg: #fafbf9;
+            --surface: #ffffff;
+            --text: #2a3b2e;
+            --text-light: #5a6b5e;
+            --border: #dfe6e0;
+            --shadow: rgba(26, 71, 42, 0.08);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding-bottom: 80px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .header {
+            background: var(--primary);
+            color: white;
+            padding: 16px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+
+        .header-content {
+            max-width: 600px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 22px;
+            font-weight: 600;
+        }
+
+        .search-container {
+            background: var(--surface);
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 64px;
+            z-index: 99;
+        }
+
+        .search-box {
+            max-width: 600px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 16px 12px 44px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-size: 16px;
+            background: var(--bg);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+        }
+
+        .content {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .category {
+            margin-bottom: 32px;
+        }
+
+        .category-header {
+            background: var(--primary-light);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            font-weight: 600;
+            font-size: 16px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .category-count {
+            background: rgba(255,255,255,0.2);
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 14px;
+        }
+
+        .items {
+            display: grid;
+            gap: 8px;
+        }
+
+        .item {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px;
+            display: grid;
+            grid-template-columns: auto 1fr auto auto;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .item.selected {
+            background: #f0f7f2;
+            border-color: var(--accent);
+        }
+
+        .item-checkbox {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            accent-color: var(--accent);
+        }
+
+        .item-name {
+            font-weight: 500;
+            font-size: 15px;
+        }
+
+        .item-details {
+            font-size: 13px;
+            color: var(--text-light);
+            margin-top: 4px;
+        }
+
+        .item-nutrition {
+            display: flex;
+            gap: 8px;
+        }
+
+        .nutrition-badge {
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            text-align: center;
+            min-width: 55px;
+        }
+
+        .carbs-badge {
+            background: var(--accent);
+            color: white;
+        }
+
+        .fat-badge {
+            background: #f59e42;
+            color: white;
+        }
+
+        .nutrition-label {
+            font-size: 10px;
+            display: block;
+            margin-top: 2px;
+            opacity: 0.9;
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .item-btn {
+            background: transparent;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+        }
+
+        .edit-btn {
+            color: var(--primary);
+        }
+
+        .delete-btn {
+            color: #c93a3a;
+        }
+
+        .fab {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            font-size: 28px;
+            box-shadow: 0 4px 12px var(--shadow);
+            cursor: pointer;
+            z-index: 101;
+        }
+
+        .meal-total {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            background: var(--primary);
+            color: white;
+            padding: 16px 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            min-width: 240px;
+            z-index: 100;
+            transform: translateY(150%);
+            transition: transform 0.3s ease;
+        }
+
+        .meal-total.show {
+            transform: translateY(0);
+        }
+
+        .meal-total-header {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .meal-total-clear {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .meal-total-values {
+            display: grid;
+            gap: 8px;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .total-label {
+            opacity: 0.9;
+        }
+
+        .total-value {
+            font-size: 24px;
+        }
+
+        .bolus-info {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255,255,255,0.3);
+            font-size: 13px;
+        }
+
+        .bolus-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            opacity: 0.9;
+            font-size: 12px;
+        }
+
+        .bolus-highlight {
+            background: rgba(255,255,255,0.2);
+            padding: 8px 12px;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: var(--border);
+            color: var(--text);
+        }
+
+        .calc-toggle {
+            background: var(--border);
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 8px;
+            width: 100%;
+            font-weight: 500;
+        }
+
+        .calculator {
+            background: #f0f7f2;
+            border: 2px solid var(--accent);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 12px;
+        }
+
+        .calc-header {
+            font-weight: 600;
+            font-size: 15px;
+            color: var(--primary);
+            margin-bottom: 12px;
+        }
+
+        .calc-result {
+            background: white;
+            border: 2px solid var(--accent);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--primary);
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .calc-result.show {
+            background: var(--accent);
+            color: white;
+        }
+
+        .camera-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .camera-preview {
+            width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            margin-top: 12px;
+            display: none;
+        }
+
+        .camera-preview.active {
+            display: block;
+        }
+
+        .ocr-status {
+            background: var(--primary-light);
+            color: white;
+            padding: 10px 12px;
+            border-radius: 8px;
+            margin-top: 12px;
+            font-size: 13px;
+            text-align: center;
+            display: none;
+        }
+
+        .ocr-status.active {
+            display: block;
+        }
+
+        .ocr-status.success {
+            background: var(--accent);
+        }
+
+        .ocr-status.error {
+            background: #c93a3a;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-light);
+        }
+
+        @media (max-width: 640px) {
+            .meal-total {
+                left: 20px;
+                right: 20px;
+                bottom: 90px;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="header"><h1>BolusBuddy Pro</h1></div>
-    <div class="container">
-        <div class="input-group">
-            <input type="text" id="new-name" placeholder="Food Name">
-            <input type="number" id="new-carbs" placeholder="Carbs (g)">
-            <input type="number" id="new-fat" placeholder="Fat (g)">
-            <button class="btn btn-primary" onclick="saveFood()">Save Entry</button>
-            <button class="btn btn-scan" onclick="startScanner()">Scan Label</button>
-        </div>
-        <div id="food-list"></div>
-    </div>
-<div id="camera-view">
-        <video id="video" autoplay playsinline muted></video>
-        <div class="cam-overlay"></div>
-        <div class="cam-buttons">
-            <button onclick="closeScanner()" style="color:white; background:none; border:none;">Cancel</button>
-            <button class="capture-btn" onclick="capture()"></button>
-            <div style="width:50px"></div>
+    <div class="header">
+        <div class="header-content">
+            <h1>🥖 Carb Tracker</h1>
+            <span id="itemCount">0 items</span>
         </div>
     </div>
 
-    <div id="scan-loader"><b>Scanning...</b></div>
-    <canvas id="canvas" style="display:none;"></canvas>
+    <div class="search-container">
+        <div class="search-box">
+            <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+            </svg>
+            <input type="text" class="search-input" id="searchInput" placeholder="Search foods...">
+        </div>
+    </div>
+
+    <div class="content" id="content"></div>
+
+    <button class="fab" id="addButton">+</button>
+
+    <div class="meal-total" id="mealTotal">
+        <div class="meal-total-header">
+            <span>Meal Total</span>
+            <button class="meal-total-clear" onclick="clearMealSelection()">Clear</button>
+        </div>
+        <div class="meal-total-values">
+            <div class="total-row">
+                <span class="total-label">Carbs:</span>
+                <span class="total-value" id="totalCarbs">0g</span>
+            </div>
+        </div>
+        <div class="bolus-info" id="bolusInfo" style="display: none;">
+            <div class="bolus-highlight" id="bolusRecommendation"></div>
+            <div class="bolus-row">
+                <span>Fat: <strong id="totalFat">0g</strong></span>
+                <span>Ratio: <strong id="fatRatio">-</strong></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="addModal">
+        <div class="modal-content">
+            <div class="modal-header" id="modalTitle">Add New Food</div>
+            <form id="addForm">
+                <input type="hidden" id="editCategory">
+                <input type="hidden" id="editIndex">
+                
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <select class="form-select" id="categorySelect" required>
+                        <option value="">Select category...</option>
+                        <option value="Cereal/Breakfasts">Cereal/Breakfasts</option>
+                        <option value="Biscuits/Cakes">Biscuits/Cakes</option>
+                        <option value="Dinners">Dinners</option>
+                        <option value="Desserts">Desserts</option>
+                        <option value="Veges/Rice">Veges/Rice</option>
+                        <option value="Crackers">Crackers</option>
+                        <option value="Lollies/Misc">Lollies/Misc</option>
+                        <option value="Custom">+ New Category</option>
+                    </select>
+                </div>
+                
+                <div class="form-group hidden" id="customCategoryGroup">
+                    <label class="form-label">New Category Name</label>
+                    <input type="text" class="form-input" id="customCategory">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Food Name</label>
+                    <input type="text" class="form-input" id="foodName" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Measure (e.g., 1/2C, 100g)</label>
+                    <input type="text" class="form-input" id="measure" required>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Carbs (g)</label>
+                        <input type="number" step="0.1" class="form-input" id="carbs" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Fat (g)</label>
+                        <input type="number" step="0.1" class="form-input" id="fat" required>
+                    </div>
+                </div>
+                
+                <button type="button" class="camera-btn" id="scanLabel">📷 Scan Nutrition Label</button>
+                <video id="cameraPreview" class="camera-preview" autoplay playsinline></video>
+                <canvas id="cameraCanvas" style="display:none;"></canvas>
+                <div id="ocrStatus" class="ocr-status"></div>
+                
+                <button type="button" class="calc-toggle" id="calcToggle">🧮 Use Calculator (from 100g label)</button>
+                
+                <div class="calculator hidden" id="calculator">
+                    <div class="calc-header">Nutrition Label Calculator</div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Carbs per 100g</label>
+                            <input type="number" step="0.1" class="form-input" id="carbsPer100g">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Fat per 100g</label>
+                            <input type="number" step="0.1" class="form-input" id="fatPer100g">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Actual serving weight (g)</label>
+                        <input type="number" step="0.1" class="form-input" id="servingWeight">
+                    </div>
+                    <div class="calc-result" id="calcResult"></div>
+                    <button type="button" class="btn btn-primary" id="applyCalc" style="width: 100%; margin-top: 8px;">Apply Values</button>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Notes (optional)</label>
+                    <input type="text" class="form-input" id="notes">
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelButton">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="submitButton">Add Food</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script>
-        let foods = JSON.parse(localStorage.getItem('foods') || '[]');
-        let camStream = null;
+        const initialData = {
+            "Cereal/Breakfasts": [
+                { name: "Lighter Tasty Apricot Nuts & Seeds Muesli", measure: "1/2C", carbs: 21, fat: 6, notes: "Includes milk, sugar, 2 drinks" },
+                { name: "Harraways Scotch Oats", measure: "1/2C x 72", carbs: 34, fat: 4, notes: "" },
+                { name: "Special K", measure: "1/4C 0.58", carbs: 34, fat: 0.5, notes: "" },
+                { name: "Nutrigrain", measure: "25g", carbs: 27, fat: 1, notes: "Approx" },
+                { name: "Fruitybix Berry", measure: "Heaped 1/2C", carbs: 28, fat: 2, notes: "Includes maple syrup, milk, sugar, 2 drinks" },
+                { name: "Maple Syrup", measure: "60g", carbs: 10, fat: 0, notes: "" },
+                { name: "Milk", measure: "1 Dsp 100mls", carbs: 47, fat: 3.5, notes: "Cereal & drinks" },
+                { name: "Sugar", measure: "1/2tsp", carbs: 4, fat: 0, notes: "" },
+                { name: "Baked Beans", measure: "100g", carbs: 2, fat: 0.5, notes: "" },
+                { name: "Toast - White Bread", measure: "1 slice", carbs: 16.4, fat: 1.5, notes: "" },
+                { name: "Sweetcorn Fritters", measure: "2 medium", carbs: 13.8, fat: 8, notes: "" },
+                { name: "Spaghetti", measure: "100g", carbs: 15.2, fat: 0.5, notes: "" },
+                { name: "Golden Syrup", measure: "1/4tsp", carbs: 13, fat: 0, notes: "" },
+                { name: "Just Right", measure: "1/2C", carbs: 17, fat: 0.5, notes: "" },
+                { name: "Waffle - Homemade", measure: "1/2", carbs: 23, fat: 6, notes: "" },
+                { name: "Pumpkin Soup - Tinned", measure: "70g", carbs: 30, fat: 2, notes: "" },
+                { name: "Pumpkin Soup - Homemade", measure: "can", carbs: 16, fat: 3, notes: "" },
+                { name: "Pancakes", measure: "1", carbs: 52, fat: 8, notes: "" },
+                { name: "Low FODMAP Muesli", measure: "1/2C", carbs: 25, fat: 5, notes: "" },
+                { name: "Tinned Breakfast", measure: "100g", carbs: 16, fat: 8, notes: "" },
+                { name: "Raglan Apricot Yoghurt", measure: "100g", carbs: 35, fat: 3, notes: "Includes sugar in drink" }
+            ],
+            "Biscuits/Cakes": [
+                { name: "Muffin (regular)", measure: "100g 0.54x", carbs: 47.5, fat: 15, notes: "" },
+                { name: "Chocolate Biscuit", measure: "3", carbs: 10, fat: 4, notes: "" },
+                { name: "Shrewsbury", measure: "2", carbs: 15, fat: 6, notes: "" },
+                { name: "Scone", measure: "4", carbs: 15, fat: 3, notes: "" },
+                { name: "Chippie", measure: "3", carbs: 12, fat: 5, notes: "" },
+                { name: "Jaffa Thins", measure: "1", carbs: 36, fat: 8, notes: "" },
+                { name: "Lemon Treat", measure: "2", carbs: 10.8, fat: 4, notes: "" },
+                { name: "Ginger Biscuit", measure: "1", carbs: 42.5, fat: 3, notes: "" },
+                { name: "Krispies", measure: "2", carbs: 13.5, fat: 5, notes: "" },
+                { name: "Kisses", measure: "2", carbs: 13.7, fat: 6, notes: "" },
+                { name: "Apricot Danish (Bakers Delight)", measure: "1", carbs: 25, fat: 12, notes: "" },
+                { name: "Blueberry Danish (Bakers Delight)", measure: "1", carbs: 30.5, fat: 14, notes: "" },
+                { name: "Chocolate Coated Macaroon", measure: "1", carbs: 11, fat: 5, notes: "" },
+                { name: "Wholemeal Round Bread Roll", measure: "1", carbs: 11, fat: 2, notes: "" },
+                { name: "Vogels Toast", measure: "1 slice", carbs: 18, fat: 2.5, notes: "" },
+                { name: "Donut Mini (Edmonds)", measure: "1", carbs: 18, fat: 8, notes: "" },
+                { name: "Animal Biscuits", measure: "5", carbs: 5, fat: 2, notes: "" }
+            ],
+            "Dinners": [
+                { name: "Buttermilk Chicken Tenderloins", measure: "2", carbs: 34, fat: 12, notes: "" },
+                { name: "Beer Battered Prawns", measure: "5/6", carbs: 60, fat: 15, notes: "" },
+                { name: "Chicken Kiev", measure: "1", carbs: 40, fat: 20, notes: "" },
+                { name: "Fish Fillets", measure: "200g", carbs: 90, fat: 8, notes: "" },
+                { name: "Fish Cakes", measure: "59g corn", carbs: 60, fat: 10, notes: "" },
+                { name: "Steak Fried Rice", measure: "2", carbs: 26, fat: 8, notes: "" },
+                { name: "Steak Soft Noodles", measure: "375g", carbs: 30, fat: 6, notes: "" },
+                { name: "Chicken tips", measure: "250g", carbs: 30, fat: 12, notes: "" },
+                { name: "Lasagne", measure: "350g", carbs: 22, fat: 15, notes: "" },
+                { name: "Risotto (Del Sette Sol)", measure: "250g", carbs: 40.6, fat: 8, notes: "" },
+                { name: "Big Ben Steak & Cheese Pie", measure: "1", carbs: 13, fat: 18, notes: "" },
+                { name: "2 Minute Noodles", measure: "1 pkt", carbs: 55, fat: 20, notes: "" },
+                { name: "Macaroni Cheese", measure: "250g", carbs: 50, fat: 15, notes: "" },
+                { name: "Cheese Sauce", measure: "1c", carbs: 20, fat: 12, notes: "" },
+                { name: "Beef Nachos", measure: "1c", carbs: 13, fat: 10, notes: "" }
+            ],
+            "Desserts": [
+                { name: "Apple Pies", measure: "52g", carbs: 19, fat: 8, notes: "" },
+                { name: "Peach Pottles", measure: "100g", carbs: 42, fat: 1, notes: "" },
+                { name: "Tropical Fruit Salad", measure: "1/2C", carbs: 19.2, fat: 0.5, notes: "" },
+                { name: "Icey Slicey", measure: "145g", carbs: 7, fat: 0, notes: "" },
+                { name: "Jelly", measure: "100g", carbs: 7, fat: 0, notes: "" }
+            ],
+            "Veges/Rice": [
+                { name: "Basmati Rice (cooked)", measure: "120 1/2C", carbs: 30, fat: 0.5, notes: "" },
+                { name: "Brown Rice (uncooked)", measure: "1/2C", carbs: 36, fat: 1.5, notes: "" },
+                { name: "Cous Cous", measure: "150g", carbs: 23, fat: 0.5, notes: "" },
+                { name: "Baby Potatoes", measure: "200g (approx 2.5)", carbs: 36, fat: 0, notes: "" },
+                { name: "Mashed Potato", measure: "100g", carbs: 10.3, fat: 4, notes: "" },
+                { name: "Mashed Kumara", measure: "1/2C", carbs: 10, fat: 0, notes: "" },
+                { name: "Mixed Veges", measure: "75g", carbs: 10, fat: 0, notes: "" },
+                { name: "Beans/Carrots", measure: "100g", carbs: 10, fat: 0, notes: "" },
+                { name: "Peas", measure: "100g", carbs: 27, fat: 0.5, notes: "" }
+            ],
+            "Crackers": [
+                { name: "Sesame Wheat", measure: "3", carbs: 13, fat: 3, notes: "" },
+                { name: "Hazelnut Somerset", measure: "4", carbs: 4, fat: 2, notes: "" },
+                { name: "Peckish", measure: "3", carbs: 15, fat: 6, notes: "" },
+                { name: "Snax", measure: "4", carbs: 15.7, fat: 7, notes: "" },
+                { name: "Salada", measure: "4", carbs: 18.4, fat: 3, notes: "" },
+                { name: "Vogels Cruskits", measure: "5", carbs: 11.7, fat: 2, notes: "" },
+                { name: "5 Seed One Square", measure: "3", carbs: 11.6, fat: 3.5, notes: "" }
+            ],
+            "Lollies/Misc": [
+                { name: "Fruit Bursts", measure: "4", carbs: 23, fat: 0, notes: "" },
+                { name: "Marshmallows", measure: "50ml", carbs: 22, fat: 0, notes: "" },
+                { name: "Eskimo/Explorer", measure: "1/2C", carbs: 20, fat: 8, notes: "" },
+                { name: "Panko Crumbs", measure: "30g", carbs: 25, fat: 1, notes: "" },
+                { name: "Onion Dip", measure: "3 tbsp", carbs: 2, fat: 15, notes: "" },
+                { name: "Jet Planes", measure: "1", carbs: 21, fat: 0, notes: "" }
+            ]
+        };
 
-        function renderFoods() {
-            const list = document.getElementById('food-list');
-            list.innerHTML = foods.map((f, i) => `
-                <div class="food-card">
-                    <div><b>${f.name}</b><br>C: ${f.carbs}g | F: ${f.fat}g</div>
-                    <button onclick="deleteFood(${i})" style="color:red; background:none; border:none;">Delete</button>
-                </div>
-            `).join('');
-        }
-
-        function saveFood() {
-            const name = document.getElementById('new-name').value;
-            const carbs = document.getElementById('new-carbs').value;
-            const fat = document.getElementById('new-fat').value || 0;
-            if(!name || !carbs) return alert('Name and Carbs required');
-            foods.unshift({ name, carbs, fat });
-            localStorage.setItem('foods', JSON.stringify(foods));
-            renderFoods();
-            document.getElementById('new-name').value = '';
-            document.getElementById('new-carbs').value = '';
-            document.getElementById('new-fat').value = '';
-        }
-
-        function deleteFood(i) {
-            foods.splice(i, 1);
-            localStorage.setItem('foods', JSON.stringify(foods));
-            renderFoods();
-        }
-
-async function startScanner() {
-            try {
-                // We are requesting 1080p and continuous focus
-                camStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { 
-                        facingMode: 'environment',
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 },
-                        focusMode: 'continuous'
-                    } 
-                });
-                document.getElementById('video').srcObject = camStream;
-                document.getElementById('camera-view').style.display = 'block';
-            } catch (e) { alert("Camera error: " + e); }
-        }
-
-        async function capture() {
-            const v = document.getElementById('video');
-            const c = document.getElementById('canvas');
-            
-            // This ensures the photo is taken at the camera's full resolution, not the screen size
-            c.width = v.videoWidth; 
-            c.height = v.videoHeight; 
-            const ctx = c.getContext('2d');
-            
-            // Draw the full-resolution image
-            ctx.drawImage(v, 0, 0);
-            
-            closeScanner();
-            document.getElementById('scan-loader').style.display = "flex";
-            
-            try {
-                // We add 'eng' and a parameter to look for digits specifically
-                const res = await Tesseract.recognize(c, 'eng', {
-                    logger: m => console.log(m) 
-                });
-                
-                const t = res.data.text.toLowerCase();
-                console.log("Detected Text:", t); // You can see this in your phone's debug log
-
-                // Improved matching for "Total Carbs" and "Total Fat"
-                const cm = t.match(/(?:carb|carbohydrate|total carb)[\s\w]*?(\d+\.?\d*)/);
-                const fm = t.match(/(?:fat|total fat)[\s\w]*?(\d+\.?\d*)/);
-                
-                if(cm) document.getElementById('new-carbs').value = Math.round(cm[1]);
-                if(fm) document.getElementById('new-fat').value = Math.round(fm[1]);
-                
-                if(!cm && !fm) {
-                    alert("Scan complete but no numbers found. Try holding the phone further back (about 10 inches) so the text is sharp.");
-                }
-            } catch (e) { 
-                alert("Scan failed: " + e); 
+        let allData = {};
+        let selectedItems = new Set();
+        let cameraStream = null;
+        
+        // Color coding based on fat ratio
+        function getFatRatioColor(carbs, fat) {
+            const ratio = fat / carbs;
+            if (ratio < 0.3) {
+                return '#5f9767'; // Green - standard bolus
+            } else if (ratio < 0.5) {
+                return '#e8a647'; // Yellow/orange - dual wave 70/30
+            } else if (ratio < 0.8) {
+                return '#e87d47'; // Orange - dual wave 50/50
+            } else {
+                return '#d95d47'; // Red/orange - dual wave 40/60
             }
-            document.getElementById('scan-loader').style.display = "none";
         }
-	lucide.createIcons();
-        renderFoods();
+        
+        function loadData() {
+            const saved = localStorage.getItem('carbData');
+            if (saved) {
+                allData = JSON.parse(saved);
+            } else {
+                allData = initialData;
+                saveData();
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('carbData', JSON.stringify(allData));
+        }
+
+        function renderData(searchTerm = '') {
+            const content = document.getElementById('content');
+            const lowerSearch = searchTerm.toLowerCase();
+            let totalItems = 0;
+            let html = '';
+
+            Object.keys(allData).sort().forEach(category => {
+                const items = allData[category].filter(item => 
+                    item.name.toLowerCase().includes(lowerSearch) ||
+                    item.measure.toLowerCase().includes(lowerSearch) ||
+                    (item.notes && item.notes.toLowerCase().includes(lowerSearch))
+                );
+
+                if (items.length > 0) {
+                    totalItems += items.length;
+                    html += `
+                        <div class="category">
+                            <div class="category-header">
+                                <span>${category}</span>
+                                <span class="category-count">${items.length}</span>
+                            </div>
+                            <div class="items">
+                    `;
+
+                    items.forEach(item => {
+                        const actualIndex = allData[category].indexOf(item);
+                        const itemId = `${category}-${actualIndex}`;
+                        const isSelected = selectedItems.has(itemId);
+                        
+                        html += `
+                            <div class="item ${isSelected ? 'selected' : ''}" id="item-${itemId}">
+                                <input type="checkbox" class="item-checkbox" 
+                                       ${isSelected ? 'checked' : ''}
+                                       onchange="toggleItemSelection('${category}', ${actualIndex})"
+                                       onclick="event.stopPropagation()">
+                                <div>
+                                    <div class="item-name">${item.name}</div>
+                                    <div class="item-details">
+                                        ${item.measure}
+                                        ${item.notes ? `<br><em>${item.notes}</em>` : ''}
+                                    </div>
+                                </div>
+                                <div class="item-nutrition">
+                                    <div class="nutrition-badge carbs-badge" style="background: ${getFatRatioColor(item.carbs, item.fat)}">
+                                        ${item.carbs}
+                                        <span class="nutrition-label">carbs</span>
+                                    </div>
+                                </div>
+                                <div class="item-actions">
+                                    <button class="item-btn edit-btn" onclick="editItem('${category}', ${actualIndex})">✏️</button>
+                                    <button class="item-btn delete-btn" onclick="deleteItem('${category}', ${actualIndex})">🗑️</button>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            if (html === '') {
+                html = `<div class="empty-state">🔍<br>No foods found</div>`;
+                totalItems = 0;
+            }
+
+            content.innerHTML = html;
+            
+            const allItemsCount = Object.values(allData).reduce((sum, items) => sum + items.length, 0);
+            document.getElementById('itemCount').textContent = searchTerm ? 
+                `${totalItems} of ${allItemsCount}` : 
+                `${allItemsCount} items`;
+        }
+
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            renderData(e.target.value);
+        });
+
+        window.toggleItemSelection = function(category, index) {
+            const itemId = `${category}-${index}`;
+            
+            if (selectedItems.has(itemId)) {
+                selectedItems.delete(itemId);
+            } else {
+                selectedItems.add(itemId);
+            }
+            
+            updateMealTotal();
+            
+            const itemElement = document.getElementById(`item-${itemId}`);
+            if (itemElement) {
+                itemElement.classList.toggle('selected');
+            }
+        };
+
+        function updateMealTotal() {
+            let totalCarbs = 0;
+            let totalFat = 0;
+            
+            selectedItems.forEach(itemId => {
+                const [category, index] = itemId.split('-');
+                const item = allData[category][parseInt(index)];
+                if (item) {
+                    totalCarbs += item.carbs;
+                    totalFat += item.fat;
+                }
+            });
+            
+            document.getElementById('totalCarbs').textContent = totalCarbs.toFixed(1) + 'g';
+            document.getElementById('totalFat').textContent = totalFat.toFixed(1) + 'g';
+            
+            const mealTotal = document.getElementById('mealTotal');
+            
+            // Calculate dual wave recommendations
+            const bolusInfo = document.getElementById('bolusInfo');
+            if (totalCarbs > 0) {
+                const fatToCarb = totalFat / totalCarbs;
+                const fatRatioPercent = (fatToCarb * 100).toFixed(0);
+                
+                document.getElementById('fatRatio').textContent = `${fatRatioPercent}%`;
+                
+                let recommendation = '';
+                let split = '';
+                let duration = '';
+                let panelColor = '';
+                
+                if (fatToCarb < 0.3) {
+                    recommendation = '✓ Standard Bolus';
+                    split = '100% upfront';
+                    duration = '';
+                    panelColor = '#5f9767'; // Green
+                } else if (fatToCarb < 0.5) {
+                    recommendation = '⚡ Dual Wave 70/30';
+                    split = '70% now / 30% extended';
+                    duration = '2-3 hours';
+                    panelColor = '#e8a647'; // Yellow/orange
+                } else if (fatToCarb < 0.8) {
+                    recommendation = '⚡ Dual Wave 50/50';
+                    split = '50% now / 50% extended';
+                    duration = '3-4 hours';
+                    panelColor = '#e87d47'; // Orange
+                } else {
+                    recommendation = '⚡ Dual Wave 40/60';
+                    split = '40% now / 60% extended';
+                    duration = '4-6 hours';
+                    panelColor = '#d95d47'; // Red/orange
+                }
+                
+                // Change panel background color
+                mealTotal.style.background = panelColor;
+                
+                document.getElementById('bolusRecommendation').innerHTML = 
+                    `${recommendation}<br><small style="font-weight: normal; font-size: 12px;">${split}${duration ? ' • ' + duration : ''}</small>`;
+                bolusInfo.style.display = 'block';
+            } else {
+                bolusInfo.style.display = 'none';
+                mealTotal.style.background = ''; // Reset to default
+            }
+            
+            if (selectedItems.size > 0) {
+                mealTotal.classList.add('show');
+            } else {
+                mealTotal.classList.remove('show');
+            }
+        }
+
+        window.clearMealSelection = function() {
+            selectedItems.clear();
+            updateMealTotal();
+            renderData(document.getElementById('searchInput').value);
+        };
+
+        window.editItem = function(category, index) {
+            const item = allData[category][index];
+            
+            document.getElementById('modalTitle').textContent = 'Edit Food';
+            document.getElementById('submitButton').textContent = 'Save Changes';
+            document.getElementById('editCategory').value = category;
+            document.getElementById('editIndex').value = index;
+            
+            document.getElementById('categorySelect').value = category;
+            document.getElementById('foodName').value = item.name;
+            document.getElementById('measure').value = item.measure;
+            document.getElementById('carbs').value = item.carbs;
+            document.getElementById('fat').value = item.fat;
+            document.getElementById('notes').value = item.notes || '';
+            
+            modal.classList.add('active');
+        };
+
+        window.deleteItem = function(category, index) {
+            const item = allData[category][index];
+            if (confirm(`Delete "${item.name}"?`)) {
+                allData[category].splice(index, 1);
+                
+                if (allData[category].length === 0) {
+                    delete allData[category];
+                }
+                
+                saveData();
+                renderData(document.getElementById('searchInput').value);
+            }
+        };
+
+        const modal = document.getElementById('addModal');
+        const addButton = document.getElementById('addButton');
+        const cancelButton = document.getElementById('cancelButton');
+        const categorySelect = document.getElementById('categorySelect');
+        const customCategoryGroup = document.getElementById('customCategoryGroup');
+
+        addButton.addEventListener('click', () => {
+            document.getElementById('modalTitle').textContent = 'Add New Food';
+            document.getElementById('submitButton').textContent = 'Add Food';
+            document.getElementById('editCategory').value = '';
+            document.getElementById('editIndex').value = '';
+            modal.classList.add('active');
+        });
+
+        function closeModal() {
+            modal.classList.remove('active');
+            document.getElementById('addForm').reset();
+            customCategoryGroup.classList.add('hidden');
+            calculator.classList.add('hidden');
+            calcToggle.textContent = '🧮 Use Calculator (from 100g label)';
+            calcResult.textContent = '';
+            calcResult.classList.remove('show');
+            document.getElementById('editCategory').value = '';
+            document.getElementById('editIndex').value = '';
+            stopCamera();
+        }
+
+        cancelButton.addEventListener('click', closeModal);
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+
+        categorySelect.addEventListener('change', (e) => {
+            if (e.target.value === 'Custom') {
+                customCategoryGroup.classList.remove('hidden');
+            } else {
+                customCategoryGroup.classList.add('hidden');
+            }
+        });
+
+        // Camera scanning with OCR
+        const scanLabelBtn = document.getElementById('scanLabel');
+        const cameraPreview = document.getElementById('cameraPreview');
+        const cameraCanvas = document.getElementById('cameraCanvas');
+        const ocrStatus = document.getElementById('ocrStatus');
+        let isProcessing = false;
+
+        scanLabelBtn.addEventListener('click', async () => {
+            if (isProcessing) {
+                return; // Don't start new scan while processing
+            }
+            
+            if (cameraStream) {
+                // If camera is active, capture and process
+                await captureAndProcess();
+            } else {
+                // Start camera
+                await startCamera();
+            }
+        });
+
+        async function startCamera() {
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+                });
+                cameraPreview.srcObject = cameraStream;
+                cameraPreview.classList.add('active');
+                scanLabelBtn.textContent = '📸 Capture & Read Label';
+                scanLabelBtn.style.background = '#c93a3a';
+            } catch (err) {
+                showOCRStatus('Camera access denied. Please enable camera permissions.', 'error');
+            }
+        }
+
+        async function captureAndProcess() {
+            if (isProcessing) return;
+            
+            isProcessing = true;
+            showOCRStatus('📸 Capturing image...', '');
+            
+            // Capture frame from video
+            const context = cameraCanvas.getContext('2d');
+            cameraCanvas.width = cameraPreview.videoWidth;
+            cameraCanvas.height = cameraPreview.videoHeight;
+            context.drawImage(cameraPreview, 0, 0);
+            
+            // Stop camera
+            stopCamera();
+            scanLabelBtn.disabled = true;
+            
+            showOCRStatus('🔍 Reading nutrition label...', '');
+            
+            try {
+                // Run OCR on captured image
+                const result = await Tesseract.recognize(
+                    cameraCanvas,
+                    'eng',
+                    {
+                        logger: info => {
+                            if (info.status === 'recognizing text') {
+                                const percent = Math.round(info.progress * 100);
+                                showOCRStatus(`🔍 Reading... ${percent}%`, '');
+                            }
+                        }
+                    }
+                );
+                
+                const text = result.data.text;
+                console.log('OCR Result:', text);
+                
+                // Parse nutrition information
+                const nutrition = parseNutritionLabel(text);
+                
+                if (nutrition.carbs || nutrition.fat) {
+                    // Fill in the 100g calculator fields
+                    if (nutrition.carbs) {
+                        document.getElementById('carbsPer100g').value = nutrition.carbs;
+                    }
+                    if (nutrition.fat) {
+                        document.getElementById('fatPer100g').value = nutrition.fat;
+                    }
+                    
+                    // Open calculator if it's hidden
+                    if (calculator.classList.contains('hidden')) {
+                        calculator.classList.remove('hidden');
+                        calcToggle.textContent = '✖️ Close Calculator';
+                    }
+                    
+                    let foundItems = [];
+                    if (nutrition.carbs) foundItems.push(`${nutrition.carbs}g carbs`);
+                    if (nutrition.fat) foundItems.push(`${nutrition.fat}g fat`);
+                    
+                    showOCRStatus(`✓ Found: ${foundItems.join(', ')} per 100g`, 'success');
+                } else {
+                    showOCRStatus('⚠️ No nutrition values detected. Try again or enter manually.', 'error');
+                }
+                
+            } catch (error) {
+                console.error('OCR Error:', error);
+                showOCRStatus('❌ Error reading label. Please try again or enter manually.', 'error');
+            }
+            
+            isProcessing = false;
+            scanLabelBtn.disabled = false;
+            scanLabelBtn.textContent = '📷 Scan Nutrition Label';
+        }
+
+        function parseNutritionLabel(text) {
+            const result = { carbs: null, fat: null };
+            
+            console.log('Raw OCR text:', text);
+            
+            // Normalize text - handle common OCR errors
+            const normalized = text
+                .toLowerCase()
+                .replace(/\s+/g, ' ')
+                .replace(/[,]/g, '.')
+                .replace(/o/gi, '0')  // OCR often confuses O with 0
+                .replace(/l/g, '1')   // OCR often confuses l with 1
+                .replace(/['''`]/g, '') // Remove quotes
+                .trim();
+            
+            console.log('Normalized text:', normalized);
+            
+            // Split into lines for better parsing
+            const lines = normalized.split(/[\n\r]+/);
+            
+            // Look for "per 100g" section
+            let per100gSection = '';
+            for (let i = 0; i < lines.length; i++) {
+                if (lines[i].includes('per 100') || lines[i].includes('per100') || 
+                    lines[i].includes('/100') || lines[i].includes('100g') || 
+                    lines[i].includes('100 g')) {
+                    // Get surrounding lines
+                    per100gSection = lines.slice(Math.max(0, i-3), i+10).join(' ');
+                    break;
+                }
+            }
+            
+            const searchText = per100gSection || normalized;
+            console.log('Search text:', searchText);
+            
+            // Enhanced carbohydrate patterns - look for numbers after carb-related words
+            const carbPatterns = [
+                /carbohydrate[s]?[:\s]+(\d+\.?\d*)/i,
+                /total carb[s]?[:\s]+(\d+\.?\d*)/i,
+                /carb[s]?[:\s]+(\d+\.?\d*)/i,
+                /carbohydrate.*?(\d+\.?\d*)\s*g/i,
+                /carb.*?(\d+\.?\d*)\s*g/i,
+                /\bcarbs?\b.*?(\d+\.?\d*)/i,
+                /(?:total\s+)?carbohydrate.*?(\d{1,2}\.?\d*)/i
+            ];
+            
+            for (const pattern of carbPatterns) {
+                const match = searchText.match(pattern);
+                if (match) {
+                    const value = parseFloat(match[1]);
+                    // Sanity check - carbs per 100g usually between 0-100
+                    if (value >= 0 && value <= 100) {
+                        result.carbs = value;
+                        console.log('Found carbs:', value);
+                        break;
+                    }
+                }
+            }
+            
+            // Enhanced fat patterns
+            const fatPatterns = [
+                /(?:total\s+)?fat[:\s]+(\d+\.?\d*)/i,
+                /\bfat\b[:\s]+(\d+\.?\d*)/i,
+                /fat.*?(\d+\.?\d*)\s*g/i,
+                /(?<!saturated\s)(?<!sat\s)fat.*?(\d{1,2}\.?\d*)/i,
+                /total\s+fat.*?(\d{1,2}\.?\d*)/i
+            ];
+            
+            for (const pattern of fatPatterns) {
+                const match = searchText.match(pattern);
+                if (match) {
+                    const value = parseFloat(match[1]);
+                    // Sanity check - fat per 100g usually between 0-100
+                    // Make sure it's not "saturated fat"
+                    const beforeMatch = searchText.substring(0, match.index);
+                    if (value >= 0 && value <= 100 && 
+                        !beforeMatch.endsWith('saturated ') && 
+                        !beforeMatch.endsWith('sat ')) {
+                        result.fat = value;
+                        console.log('Found fat:', value);
+                        break;
+                    }
+                }
+            }
+            
+            // If we didn't find values, try a more aggressive number search
+            if (!result.carbs || !result.fat) {
+                // Look for lines that contain nutrition-related words and numbers
+                for (const line of lines) {
+                    if (!result.carbs && /carb/i.test(line)) {
+                        const numbers = line.match(/\d+\.?\d*/g);
+                        if (numbers && numbers.length > 0) {
+                            const value = parseFloat(numbers[0]);
+                            if (value >= 0 && value <= 100) {
+                                result.carbs = value;
+                                console.log('Found carbs (aggressive):', value);
+                            }
+                        }
+                    }
+                    
+                    if (!result.fat && /\bfat\b/i.test(line) && !/saturated/i.test(line)) {
+                        const numbers = line.match(/\d+\.?\d*/g);
+                        if (numbers && numbers.length > 0) {
+                            const value = parseFloat(numbers[0]);
+                            if (value >= 0 && value <= 100) {
+                                result.fat = value;
+                                console.log('Found fat (aggressive):', value);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            console.log('Final result:', result);
+            return result;
+        }
+
+        function showOCRStatus(message, type) {
+            ocrStatus.textContent = message;
+            ocrStatus.className = 'ocr-status active';
+            if (type) {
+                ocrStatus.classList.add(type);
+            }
+            
+            // Auto-hide success/error messages after 5 seconds
+            if (type === 'success' || type === 'error') {
+                setTimeout(() => {
+                    ocrStatus.classList.remove('active');
+                }, 5000);
+            }
+        }
+
+        function stopCamera() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+                cameraPreview.classList.remove('active');
+                scanLabelBtn.textContent = '📷 Scan Nutrition Label';
+                scanLabelBtn.style.background = '';
+            }
+        }
+
+        // Calculator functionality
+        const calcToggle = document.getElementById('calcToggle');
+        const calculator = document.getElementById('calculator');
+        const carbsPer100g = document.getElementById('carbsPer100g');
+        const fatPer100g = document.getElementById('fatPer100g');
+        const servingWeight = document.getElementById('servingWeight');
+        const calcResult = document.getElementById('calcResult');
+        const applyCalc = document.getElementById('applyCalc');
+
+        calcToggle.addEventListener('click', () => {
+            calculator.classList.toggle('hidden');
+            if (!calculator.classList.contains('hidden')) {
+                calcToggle.textContent = '✖️ Close Calculator';
+            } else {
+                calcToggle.textContent = '🧮 Use Calculator (from 100g label)';
+            }
+        });
+
+        function calculateNutrition() {
+            const carbsPer100 = parseFloat(carbsPer100g.value);
+            const fatPer100 = parseFloat(fatPer100g.value);
+            const weight = parseFloat(servingWeight.value);
+            
+            if (weight && (carbsPer100 || fatPer100)) {
+                const carbsResult = carbsPer100 ? (carbsPer100 * weight / 100).toFixed(1) : 0;
+                const fatResult = fatPer100 ? (fatPer100 * weight / 100).toFixed(1) : 0;
+                
+                calcResult.innerHTML = `<strong>${weight}g serving:</strong><br>${carbsResult}g carbs, ${fatResult}g fat`;
+                calcResult.classList.add('show');
+                applyCalc.disabled = false;
+                return { carbs: carbsResult, fat: fatResult };
+            } else {
+                calcResult.textContent = 'Enter weight and at least one nutrient';
+                calcResult.classList.remove('show');
+                applyCalc.disabled = true;
+                return null;
+            }
+        }
+
+        carbsPer100g.addEventListener('input', calculateNutrition);
+        fatPer100g.addEventListener('input', calculateNutrition);
+        servingWeight.addEventListener('input', calculateNutrition);
+
+        applyCalc.addEventListener('click', () => {
+            const result = calculateNutrition();
+            if (result) {
+                document.getElementById('carbs').value = result.carbs;
+                document.getElementById('fat').value = result.fat;
+                
+                const currentMeasure = document.getElementById('measure').value;
+                if (!currentMeasure) {
+                    document.getElementById('measure').value = `${servingWeight.value}g`;
+                }
+                
+                applyCalc.textContent = '✓ Applied!';
+                setTimeout(() => {
+                    applyCalc.textContent = 'Apply Values';
+                }, 1500);
+            }
+        });
+
+        document.getElementById('addForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            let category = document.getElementById('categorySelect').value;
+            if (category === 'Custom') {
+                category = document.getElementById('customCategory').value.trim();
+                if (!category) {
+                    alert('Please enter a category name');
+                    return;
+                }
+            }
+
+            const newItem = {
+                name: document.getElementById('foodName').value.trim(),
+                measure: document.getElementById('measure').value.trim(),
+                carbs: parseFloat(document.getElementById('carbs').value),
+                fat: parseFloat(document.getElementById('fat').value),
+                notes: document.getElementById('notes').value.trim()
+            };
+
+            const editCategory = document.getElementById('editCategory').value;
+            const editIndex = document.getElementById('editIndex').value;
+
+            if (editCategory && editIndex !== '') {
+                const oldCategory = editCategory;
+                const index = parseInt(editIndex);
+                
+                allData[oldCategory].splice(index, 1);
+                if (allData[oldCategory].length === 0) {
+                    delete allData[oldCategory];
+                }
+                
+                if (!allData[category]) {
+                    allData[category] = [];
+                }
+                allData[category].push(newItem);
+                allData[category].sort((a, b) => a.name.localeCompare(b.name));
+            } else {
+                if (!allData[category]) {
+                    allData[category] = [];
+                }
+                allData[category].push(newItem);
+                allData[category].sort((a, b) => a.name.localeCompare(b.name));
+            }
+            
+            saveData();
+            renderData(document.getElementById('searchInput').value);
+            
+            closeModal();
+            
+            addButton.textContent = '✓';
+            setTimeout(() => {
+                addButton.textContent = '+';
+            }, 1000);
+        });
+
+        loadData();
+        renderData();
     </script>
 </body>
 </html>
